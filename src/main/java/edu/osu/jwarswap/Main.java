@@ -4,6 +4,8 @@ import java.util.Scanner;
 import java.io.File;
 import java.util.LinkedList;
 import java.util.HashMap;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class Main {
 	public static void main(String[] args) {
@@ -41,10 +43,12 @@ public class Main {
 		new WarswapTask(tgtDegSeq, srcDegSeq, rand_outdir, start, end, factor).start();
 	}
 	
+
+	
 	
 	private static LinkedList<int[]> degreeSequences(String graphfile)
 	/** Read the file given by the input string and produce a pair of degree sequences
-	 * interpreting the file as a bipartite edge list.*/
+	 * interpreting the file as a directed edge list.*/
 	throws FileNotFoundException{
 		File edgelistFile = new File(graphfile);
 		Scanner edgelistScanner = new Scanner(edgelistFile);
@@ -65,29 +69,60 @@ public class Main {
 		}
 		edgelistScanner.close();
 		
+		// Ensure the adjacency matrix is square by completing the HashMaps.
+		for(int src: srcHashMap.keySet()) {
+			tgtHashMap.put(src, tgtHashMap.getOrDefault(src, 0));
+		}
+		for(int tgt: tgtHashMap.keySet()) {
+			srcHashMap.put(tgt, srcHashMap.getOrDefault(tgt, 0));
+		}
+		
 		// Create the degree sequences and put them in the output list.
-		LinkedList <int[]> degSeqs = new LinkedList <int[]>();
-
-		int[] tgtDegSeq = new int[tgtHashMap.size()];
+		int[][] inout = new int[srcHashMap.size()][2];
 		int i = 0;
+		// List the in- and out-degrees for each vertex.
+		for(int vtx: srcHashMap.keySet()) {
+			inout[i][0] = srcHashMap.get(vtx);
+			inout[i][1] = tgtHashMap.get(vtx);
+			i++;
+		}
+		
+		Arrays.sort(inout, new HierarchicalComparator());
+		LinkedList <int[]> degSeqs = new LinkedList <int[]>();
+		
+		int[] tgtDegSeq = new int[tgtHashMap.size()];
+		int[] srcDegSeq = new int[tgtHashMap.size()];
 //		System.out.println("\ntgthashMap keys");
-		for (Integer key: tgtHashMap.keySet()) {
-			tgtDegSeq[i] = (int) tgtHashMap.get(key);
-			i++;
-//			System.out.print(key + ": " + tgtHashMap.get(key) + ", ");
+		for (i = 0; i < srcHashMap.size(); i++) {
+			srcDegSeq[i] = inout[i][0];
+			tgtDegSeq[i] = inout[i][1];
 		}
-//		System.out.println();
+
 		degSeqs.add(tgtDegSeq);
-		int[] srcDegSeq = new int[srcHashMap.size()];
-		i = 0;
-//		System.out.println("srcHashMap keys:");
-		for (Integer key: srcHashMap.keySet()) {
-			srcDegSeq[i] = (int) srcHashMap.get(key);
-			i++;
-//			System.out.print(key + ": " + srcHashMap.get(key) + ", ");
-		}
 		degSeqs.add(srcDegSeq);		
+
 		return degSeqs;
 	}
-	
+}
+
+
+class HierarchicalComparator implements Comparator<int[]>{
+	public int compare(int[] pair1, int[] pair2) {
+		/** Comparator for sorting a 2d array in reverse order based on first column in row, then second.*/
+		if (pair1[0] > pair2[0]) {
+			return -1;
+		}
+		else if (pair1[0] < pair2[0]) {
+			return 1;
+		}
+		else if (pair1[1] > pair2[1]) {
+			return -1;
+		}
+		else if (pair1[1] < pair2[1]) {
+			return 1;
+		}
+		else {
+			return 0;
+		}
+	}
 }

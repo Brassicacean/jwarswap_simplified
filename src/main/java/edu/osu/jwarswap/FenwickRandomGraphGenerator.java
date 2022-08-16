@@ -1,8 +1,5 @@
 package edu.osu.jwarswap;
 import java.util.Arrays;
-import peersim.util.RandPermutation;
-import java.util.Random;
-import java.util.Iterator;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIterator;
@@ -21,14 +18,17 @@ public class FenwickRandomGraphGenerator {
 		// Produces a randomized network using WaRSwap algorithm 
 		// Inputs: A degree sequence is all that should be needed.
 		// Outputs: An edge-list. It shouldn't need to be more complicated than that.
+
+		// TODO: This works for bipartite networks, but not directed networks. Need to preserve 
+		// in- and out-degree pairings.
 		this.srcDegSeq = Arrays.copyOf(srcdegseq, srcdegseq.length);
-		Arrays.sort(this.srcDegSeq);
-		for (int left=0, right=this.srcDegSeq.length - 1; left<right; left++, right--) {
-		    // exchange the first and last
-		    int temp = this.srcDegSeq[left];
-		    this.srcDegSeq[left]  = this.srcDegSeq[right];
-		    this.srcDegSeq[right] = temp;
-		}
+//		Arrays.sort(this.srcDegSeq);
+//		for (int left=0, right=this.srcDegSeq.length - 1; left<right; left++, right--) {
+//		    // exchange the first and last
+//		    int temp = this.srcDegSeq[left];
+//		    this.srcDegSeq[left]  = this.srcDegSeq[right];
+//		    this.srcDegSeq[right] = temp;
+//		}
 		// Fenwick tree to easily get sums.
 		this.srcDegTree = new IntFenwickTree(srcDegSeq);
 		

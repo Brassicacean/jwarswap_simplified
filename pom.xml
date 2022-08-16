@@ -1,0 +1,46 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>edu.osu.jwarswap</groupId>
+  <artifactId>jwarswap</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>Jwarswap Simplified</name>
+  <description>Lightweight, fast implementation of WaRSwap, using Fenwick trees for fast random selection of nodes.</description>
+  <dependencies>
+  	<dependency>
+  		<groupId>it.unimi.dsi</groupId>
+  		<artifactId>fastutil-core</artifactId>
+  		<version>8.5.8</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>peersim</groupId>
+  		<artifactId>peersim</artifactId>
+  		<version>1.0.4</version>
+  	</dependency>
+  </dependencies>
+  <build>
+   <plugins>
+       <plugin>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.5.1</version>
+            <configuration>
+                <source>1.8</source>
+                <target>1.8</target>
+            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-jar-plugin</artifactId>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <addClasspath>true</addClasspath>
+                        <classpathPrefix>lib/</classpathPrefix>
+                        <mainClass>edu.osu.jwarswap.Main
+                        </mainClass>
+                    </manifest>
+                </archive>
+            </configuration>
+        </plugin>
+    </plugins>
+   </build>
+</project>
