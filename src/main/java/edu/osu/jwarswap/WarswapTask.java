@@ -13,7 +13,7 @@ import java.io.FileWriter;
 	private int start, end;
 	private double factor;
 	
-	public WarswapTask(int[] tgtDegSeq, int[] srcDegSeq, String rand_outdir, int start, int end, double factor){
+	public WarswapTask(int[] tgtDegSeq, int[] srcDegSeq, String vertexFile, String rand_outdir, int start, int end, double factor){
 		// Task to make random networks and write them to files.
 		// Will work on a single thread and either pull numbers from a
 		// queue or just receive a list at the start of jobs to do.
@@ -27,11 +27,11 @@ import java.io.FileWriter;
 	
 	
 	public void run() {
-//		System.out.println("Degree sequences:");
+		System.out.println("Degree sequences:");
 		for (int deg: srcDegSeq) System.out.print(deg + " ");
-//		System.out.println();
+		System.out.println();
 		for (int deg: tgtDegSeq) System.out.print(deg + " ");
-//		System.out.println();
+		System.out.println();
 		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor);
 		for (int job = start; job <= end; job++) {
 			// Make each graph in this loop and write it to a file as a tab-separated edge list.
@@ -46,8 +46,11 @@ import java.io.FileWriter;
 		    	writer.close();
 		    } catch (IOException e) {
 				System.err.println("Error occurred wile creating file " + filepath);
-				e.printStackTrace();
+//				e.printStackTrace();
+				System.exit(1);
 			}
+		    // Enumerate subgraphs in edgeArr.
+		    
 		}
 		
 		// Once I'm ready, I'll add the ability to enumerate subgraphs. 
