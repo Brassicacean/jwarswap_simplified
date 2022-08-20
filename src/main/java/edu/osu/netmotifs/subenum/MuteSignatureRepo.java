@@ -21,7 +21,6 @@ Original code is created by Saeed Shahrivari
  */
 package edu.osu.netmotifs.subenum;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,13 +32,12 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 
-import edu.osu.netmotifs.warswap.common.ListReverseIndexComparatorLong;
-import edu.osu.netmotifs.warswap.common.Utils;
-
 /**
  * Created by Saeed on 3/8/14.
+ * Modified by Zachary A. Bright, no longer uses a FileWriter, instead just stores and returns values for individual graphs.
  */
-public class SignatureRepo {
+
+public class MuteSignatureRepo {
     static int capacity = 40 * 1000 * 1000;
     static int motifSize = 3;
     //HashMultiset<BoolArray> labelMap = HashMultiset.create();
@@ -48,13 +46,10 @@ public class SignatureRepo {
     
     HashMap<String, Long> stringLabelMap = new HashMap<String, Long>();
     
-    FileWriter writer;
     private boolean verbose = true;
     private ReentrantLock lock = new ReentrantLock();
-    private String outStream = "";
 
-    public SignatureRepo(FileWriter writer) throws IOException {
-        this.writer = writer;
+    public MuteSignatureRepo() {
     }
 
     public static int getCapacity() {
@@ -62,7 +57,7 @@ public class SignatureRepo {
     }
 
     public static void setCapacity(int capacity) {
-        SignatureRepo.capacity = capacity;
+        MuteSignatureRepo.capacity = capacity;
     }
 
     public boolean isVerbose() {
@@ -107,13 +102,9 @@ public class SignatureRepo {
 //        if (isVerbose()) {
 //            System.out.printf("Added %,d new signatures. LabelMap size:%,d\n", multiset.elementSet().size(), size());
 //        }
-    	if (size() > capacity)
-    		try {
-    			flush();
-    		} catch (IOException exp) {
-    			exp.printStackTrace();
-    			System.exit(-1);
-    		}
+    	if (size() > capacity) {
+    		//TODO: Deal with this.
+    	}
     	lock.unlock();
     }
     
@@ -159,13 +150,9 @@ public class SignatureRepo {
 				stringLabelMap.put(isomorphicKey, longMap.get(subgStr).longValue() + count.longValue());
 				
 		}
-        if (size() > capacity)
-            try {
-                flushString();
-            } catch (IOException exp) {
-                exp.printStackTrace();
-                System.exit(-1);
-            }
+        if (size() > capacity) {
+        	//TODO: Do something to deal with this.
+        }
         lock.unlock();
     }
 
@@ -174,10 +161,6 @@ public class SignatureRepo {
         return labelMap.size() + longLabelMap.size();
     }
     
-    public void writeToLog(String log) {
-    	outStream += log;
-	}
-
     /**
      * @Modified by Mitra Ansariola
      * @author Saeed
@@ -188,76 +171,15 @@ public class SignatureRepo {
      * 
      * @throws IOException
      */
-    public void flush() throws IOException {
+    
+    public LongLongOpenHashMap flush() throws IOException {
     	lock.lock();
-    	ArrayList<Long> valuesList = new ArrayList<Long>();
-    	ArrayList<Long> keysList = new ArrayList<Long>();
     	
-    	for (int i = 0; i < longLabelMap.keys.length; i++)
-    		if (longLabelMap.allocated[i]) {
-    			long subg = longLabelMap.keys[i];
-    			long count = longLabelMap.values[i];
-    			valuesList.add(count);
-    			keysList.add(subg);
-    		}
-    	ListReverseIndexComparatorLong comparator = new ListReverseIndexComparatorLong(valuesList);
-    	Integer[] valuesIdxList = comparator.createIndexArray();
-    	Arrays.sort(valuesIdxList, comparator);
-    	
-    	writer.write(outStream);
-    	writer.write("======================================================================\n\nResults..\n");
-    	writer.write("subgraph Number, Adj Matrix, Frequency\n\n");
-    	for (int i = 0; i < valuesIdxList.length; i++) {
-    		writer.write(Utils.getAdjMtxOfSubgraph(keysList.get(valuesIdxList[i]), motifSize, valuesList.get(valuesIdxList[i]), i+1));
-    		
-    	}
-    	
+    	LongLongOpenHashMap outHashMap = longLabelMap.clone();
     	labelMap.clear();
     	longLabelMap.clear();
-    	writer.flush();
     	lock.unlock();
-    	
+    	return outHashMap;
     }
     
-    public void flushString() throws IOException {
-        lock.lock();
-        ArrayList<Long> valuesList = new ArrayList<Long>();
-        ArrayList<String> keyList = new ArrayList<String>();
-        
-        Iterator<String> strKeyItr = stringLabelMap.keySet().iterator();
-        while (strKeyItr.hasNext()) {
-			String isomorphicGStr = (String) strKeyItr.next();
-			long count = stringLabelMap.get(isomorphicGStr);
-			valuesList.add(count);
-			keyList.add(isomorphicGStr);
-		}
-        
-        ListReverseIndexComparatorLong comparator = new ListReverseIndexComparatorLong(valuesList);
-		Integer[] valuesIdxList = comparator.createIndexArray();
-		Arrays.sort(valuesIdxList, comparator);
-
-		writer.write(outStream);
-		writer.write("======================================================================\n\nResults..\n");
-		writer.write("subgraph Number, Adj Matrix, Frequency\n\n");
-		for (int i = 0; i < valuesIdxList.length; i++) {
-			writer.write(Utils.getAdjMtxOfSubgraph(keyList.get(valuesIdxList[i]), motifSize, valuesList.get(valuesIdxList[i]), i+1));
-			
-		}
-		
-		labelMap.clear();
-		longLabelMap.clear();
-		writer.flush();
-		lock.unlock();
-
-    }
-
-    public void close() throws IOException {
-    	flush();
-    	writer.close();
-    }
-    
-    public void closeString() throws IOException {
-        flushString();
-        writer.close();
-    }
 }

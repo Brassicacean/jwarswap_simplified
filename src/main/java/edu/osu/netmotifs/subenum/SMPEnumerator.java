@@ -88,7 +88,7 @@ public class SMPEnumerator {
      * @throws IOException
      * @throws InterruptedException
      */
-    public static long enumerateNonIsoInParallel(final Graph graph, final int motifSize, final int thread_count, Stopwatch stopwatch, FileWriter writer) throws IOException, InterruptedException {
+    public static LongLongOpenHashMap enumerateNonIsoInParallel(final Graph graph, final int motifSize, final int thread_count) throws InterruptedException {
         final AtomicLong found = new AtomicLong(0);
         List<SMPState> sorted = null;
         
@@ -99,9 +99,9 @@ public class SMPEnumerator {
 
 //        System.out.printf("Initial states: %,d\n", bq.size());
 
-//        final SignatureRepo signatureRepo = new SignatureRepo(writer);
-//        signatureRepo.motifSize = motifSize;
-//        signatureRepo.setVerbose(verbose);
+        final MuteSignatureRepo signatureRepo = new MuteSignatureRepo();
+        signatureRepo.motifSize = motifSize;
+        signatureRepo.setVerbose(verbose);
 
         Thread[] threads = new Thread[thread_count];
         final AtomicInteger live_threads = new AtomicInteger(thread_count);
@@ -150,14 +150,14 @@ public class SMPEnumerator {
                         				long subl = graph.getSubGraphAsLong(foundSubGraph);
                                         luniqueMap.putOrAdd(subl, 1, 1);
                                         if (luniqueMap.size() > uniqueCap) {
-//                                            signatureRepo.add(luniqueMap, motifSize);
+                                            signatureRepo.add(luniqueMap, motifSize);
                                             luniqueMap.clear();
                                         }
                         			} else {
                                         SubGraphStructure sub = graph.getSubGraph(foundSubGraph);
                                         uniqueMap.add(sub.getAdjacencyArray());
                                         if (uniqueMap.elementSet().size() > uniqueCap) {
-//                                            signatureRepo.add(uniqueMap);
+                                            signatureRepo.add(uniqueMap);
                                             uniqueMap.clear();
                                         }
                                     }
@@ -174,8 +174,8 @@ public class SMPEnumerator {
                         	}
                         }
                     }
-//                    signatureRepo.add(uniqueMap);
-//                    signatureRepo.add(luniqueMap, motifSize);
+                    signatureRepo.add(uniqueMap);
+                    signatureRepo.add(luniqueMap, motifSize);
                     uniqueMap.clear();
                     luniqueMap.clear();
 //                    System.out.printf("Thread %d finished. %d threads remaining.\n", thread_id, live_threads.decrementAndGet());
@@ -195,7 +195,8 @@ public class SMPEnumerator {
 //        signatureRepo.close();
 
 
-        return found.get();
+//        return found.get();
+        return signatureRepo.flush();
     }
 
 }

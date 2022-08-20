@@ -30,18 +30,16 @@ import java.io.InputStreamReader;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.base.Stopwatch;
+import com.carrotsearch.hppc.LongLongOpenHashMap;
+
 
 public class CallEnumerateSubGraphs {
 	
 	public CallEnumerateSubGraphs(int motifSize, String inputGraphPath, String outputPath, int noOfThreads) {
 
 		Graph graph = null;
-		Stopwatch stopwatch = Stopwatch.createStarted();
-		String logForOutput = "";
 
         try {
-        	FileWriter writer = new FileWriter(outputPath);
         	graph = HashGraph.readStructureFromFile(inputGraphPath);
             if (graph.vertexCount() < 20000) 
                 graph = MatGraph.readStructureFromFile(inputGraphPath);
@@ -52,19 +50,14 @@ public class CallEnumerateSubGraphs {
 //            stopwatch.reset().start();
 
             SMPEnumerator.setMaxCount(Long.MAX_VALUE);
-
-            SMPEnumerator.setVerbose(true);  // Useless. verbose doesn't change anything.
-
-            logForOutput += "Graph's input file: " + inputGraphPath + " \nSubgraph size:" + motifSize + "\n";
-            writer.write(logForOutput);
-            writer.flush();
             
             if (motifSize == 1) 
-            	OneNodeMotifsEnumeration(inputGraphPath, outputPath, graph.vertexCount(), stopwatch, writer);
+            	OneNodeMotifsEnumeration(inputGraphPath, outputPath, graph.vertexCount());
             else if (motifSize < 6)
-            	SMPEnumerator.enumerateNonIsoInParallel(graph, motifSize, 1, stopwatch, writer);
+            	//TODO: What to do with the LongLongOpenHashMap?
+            	SMPEnumerator.enumerateNonIsoInParallel(graph, motifSize, 1);
             else 
-            	SMPEnumerator.enumerateNonIsoInParallel(graph, motifSize, 1, stopwatch, writer);
+            	SMPEnumerator.enumerateNonIsoInParallel(graph, motifSize, 1);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -72,7 +65,7 @@ public class CallEnumerateSubGraphs {
 
     }
 	
-	public void OneNodeMotifsEnumeration(String edgeFile, String outputFile, int vertexCount, Stopwatch stopwatch, FileWriter writer) {
+	public void OneNodeMotifsEnumeration(String edgeFile, String outputFile, int vertexCount) {
 		int selfLoopCount = 0;
 		try {
 			InputStream inputStream = new FileInputStream(
@@ -89,14 +82,7 @@ public class CallEnumerateSubGraphs {
 			bufferedReader.close();
 			inputStream.close();
 			
-			writer.write("Total enumerated subgraphs: " + vertexCount + "\n\n");
-			writer.write("Enumeration took : " + stopwatch + " \tequal to " + stopwatch.elapsed(TimeUnit.SECONDS) + " seconds.\n\n");
-			writer.write("Total number of non-isomorphic subgraphs : 4\n");
-			writer.write("======================================================================\n\nResults..\n");
-			writer.write("subgraph Number, Adj Matrix, Frequency\n\n");
-			writer.write("1,3," + selfLoopCount + "\n");
-			writer.flush();
-			writer.close();
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
