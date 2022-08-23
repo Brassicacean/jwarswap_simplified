@@ -36,8 +36,6 @@ import java.util.Set;
 import com.carrotsearch.hppc.IntOpenHashSet;
 import com.google.common.primitives.Ints;
 
-import edu.osu.netmotifs.warswap.common.CONF;
-
 /**
  * @modified and commented by Mitra Ansariola
  * 
@@ -180,7 +178,7 @@ public class MatGraph implements Graph {
 
     private void addEdge(int source, int dest, byte color1, byte color2) {
     	edgeCount++;
-    	if (dest == source && CONF.considerSelfloop()) {
+    	if (dest == source) {
     		addVertex(source, Byte.valueOf("3"));
     		return;
     	}

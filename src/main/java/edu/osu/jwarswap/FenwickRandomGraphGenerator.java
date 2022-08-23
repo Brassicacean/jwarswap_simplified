@@ -82,7 +82,7 @@ public class FenwickRandomGraphGenerator {
 //				System.out.println("maxCap: " + randomEdgeGenerator.capacitySumTo(this.tgtDegSeq.length - 1));
 				// Choose a random source vertex that hasn't been chosen yet.
 //				System.out.print("Targets: ");
-				for (int target: targets) System.out.print(target + " ");
+//				for (int target: targets) System.out.print(target + " ");
 //				System.out.println();
 				int swapSrcVtx = srcIterator.nextInt();
 //				System.out.println("swapSrcVtx: " + swapSrcVtx);

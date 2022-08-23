@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.Scanner;
 
 public class Parsing {
@@ -67,6 +68,31 @@ public class Parsing {
 
 		return degSeqs;
 	}
+	
+	
+	public static int[][] parseEdgeListFile(String graphfile)
+			throws FileNotFoundException{
+		File edgelistFile = new File(graphfile);
+		Scanner edgelistScanner = new Scanner(edgelistFile);
+		LinkedList<Integer> nodes = new LinkedList<Integer>();
+		while(edgelistScanner.hasNextLine()) {
+			String line = edgelistScanner.nextLine();
+			Scanner lineScanner = new Scanner(line);
+			nodes.add(Integer.valueOf(lineScanner.findInLine("^\\d+")));
+			nodes.add(Integer.valueOf(lineScanner.findInLine("\\d+$")));
+			lineScanner.close();
+		}
+		edgelistScanner.close();
+		int length = nodes.size() / 2;
+		int[][] edgeArr = new int[length][2];
+		ListIterator<Integer> nodesIterator = nodes.listIterator();
+		for (int i = 0; i < length; i++) {
+			edgeArr[i][0] = (int) nodesIterator.next();
+			edgeArr[i][1] = (int) nodesIterator.next();
+		}
+		return edgeArr;
+	}
+	
 }
 
 

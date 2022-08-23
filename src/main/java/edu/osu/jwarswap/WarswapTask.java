@@ -20,10 +20,24 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	private String rand_outdir;
 	private int start, end;
 	private double factor;
-	final private int motifSize = 3;
-//	private LongLongOpenHashMap subgraphTotal = new LongLongOpenHashMap();
+	private static int motifSize = 3;
+	private static boolean enumerate = true;
 	private HashMap <Long, LinkedList <Long>> subgraphCounts = new HashMap <Long, LinkedList <Long>>();
 
+	
+	public static void setMotifSize(int size) {
+		motifSize = size;
+	}
+	
+	public static void setEnumerate(boolean bool) {
+		enumerate = bool;
+	}
+	
+	
+	public static int getMotifSize() {
+		return motifSize;
+	}
+	
 	
 	public WarswapTask(int[] tgtDegSeq, int[] srcDegSeq, String rand_outdir, int start, int end, double factor){
 		// Task to make random networks and write them to files.
@@ -42,6 +56,19 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 		return subgraphCounts;
 	}
 	
+	
+	public static LongLongOpenHashMap getSubgraphs(int[][] edgeArr) {
+	    Graph graph = HashGraph.readStructure(edgeArr);
+        SMPEnumerator.setMaxCount(Long.MAX_VALUE);
+        LongLongOpenHashMap subgraphs = null;
+        try {
+        	subgraphs = SMPEnumerator.enumerateNonIsoInParallel(graph, motifSize, 1);
+        } catch (InterruptedException e) {
+        	e.printStackTrace();
+        	System.exit(1);
+        }
+        return subgraphs;
+	}
 	
 	public void run() {
 		System.out.println("Degree sequences:");
@@ -66,22 +93,16 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 //				e.printStackTrace();
 				System.exit(1);
 			}
-		    // Enumerate subgraphs in edgeArr.
-		    Graph graph = HashGraph.readStructure(edgeArr);
-            SMPEnumerator.setMaxCount(Long.MAX_VALUE);
-            LongLongOpenHashMap subgraphs = null;
-            try {
-            	subgraphs = SMPEnumerator.enumerateNonIsoInParallel(graph, motifSize, 1);
-            } catch (InterruptedException e) {
-            	e.printStackTrace();
-            	System.exit(1);
-            }
-            for (long key: subgraphs.keys) {
-            	if (!subgraphCounts.containsKey(key)) {
-            		subgraphCounts.put(key, new LinkedList<Long>());
-            	}
-        		subgraphCounts.get(key).add(subgraphs.get(key));
-            }
+		    // Enumerate subgraphs in edgeArr and add the counts to subgraphCounts in the appropriate locations.
+		    if (enumerate) {
+		    	LongLongOpenHashMap subgraphs = getSubgraphs(edgeArr);
+	            for (long key: subgraphs.keys) {
+	            	if (!subgraphCounts.containsKey(key)) {
+	            		subgraphCounts.put(key, new LinkedList<Long>());
+	            	}
+	        		subgraphCounts.get(key).add(subgraphs.get(key));
+	            }
+		    }
 		}	
 	}
 	

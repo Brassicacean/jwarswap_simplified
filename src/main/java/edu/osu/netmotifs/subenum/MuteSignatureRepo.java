@@ -126,13 +126,7 @@ public class MuteSignatureRepo {
 //        if (isVerbose()) {
 //            System.out.printf("Added %,d new signatures. LabelMap size:%,d\n", longMap.size(), size());
 //        }
-    	if (size() > capacity)
-    		try {
-    			flush();
-    		} catch (IOException exp) {
-    			exp.printStackTrace();
-    			System.exit(-1);
-    		}
+    	if (size() > capacity) flush();
     	lock.unlock();
     }
     
@@ -172,7 +166,7 @@ public class MuteSignatureRepo {
      * @throws IOException
      */
     
-    public LongLongOpenHashMap flush() throws IOException {
+    public LongLongOpenHashMap flush() {
     	lock.lock();
     	
     	LongLongOpenHashMap outHashMap = longLabelMap.clone();

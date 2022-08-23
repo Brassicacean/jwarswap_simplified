@@ -1,6 +1,9 @@
 package edu.osu.jwarswap;
 
+import edu.osu.netmotifs.subenum.ByteArray;
+import edu.osu.netmotifs.subenum.Graph;
 import edu.osu.netmotifs.subenum.HashGraph;
+import edu.osu.netmotifs.subenum.SMPEnumerator;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -17,28 +20,93 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import com.carrotsearch.hppc.LongLongOpenHashMap;
+
 public class Main {
+	private final static String helpMessage = 
+			"java -jar jwarswap.jar [Options] graphfile rand-outdir ngraphs factor\n" +
+			"graphfile: A two-column edge-list separated by tabs.\n" +
+			"rand-outdir: A directory to put randomized output graphs into.\n"+
+			"ngraphs: Number of random graphs to generate.\n" +
+			"factor: The correction factor to use for weighted edge selection.\n" +
+			"Options:\n" + 
+			"\t--threads THREADS, -t THREADS: Use THREADS threads.\n" +
+			"\t--vertex-file VERTEX_FILE, -v VERTEX_FILE: Use the file, VERTEX_FILE, to provide the colors of the vertices.\n" +
+			"\t--help, -h: Print this help message.\n" +
+			"\t--no-motifs, -n: Don't enumarate subgraphs to find motifs.\n" + 
+			"\t--motif-size SIZE, -s SIZE: Enumerate motifs of size SIZE. Don't use a size greater than 5.";
+	private static String motifsOutfile = null;
 	public static void main(String[] args) {
-		//TODO: Make a better CLI.
-		final String graphfile = args[0];
-		final String rand_outdir = args[1];
-		final int ngraphs = (int) Integer.valueOf(args[2]);
-		final double factor = (double) Double.valueOf(args[3]);
-		final int threads = (int) Integer.valueOf(args[4]);
-		String vertexFile = "";
-		if (args.length == 6) {
-			vertexFile = args[5];
-		}
-		runWarswap(graphfile, vertexFile, rand_outdir, ngraphs, factor, threads);
+		parseArguments(args);
 	}
 	
-	private static void runWarswap(String graphfile, String vertexFile, String rand_outdir, int ngraphs, double factor, int threads) {
+	private static void parseArguments(String[] args) {
+		String graphfile = null;
+		String randOutdir = null;
+		int ngraphs = 0;
+		double factor = 0;
+		int threads = 1	;
+		String vertexFile = null;
+		boolean enumerate = true;
+		
+		int position = 0;
+		int i = 0;
+		while (i < args.length) {
+			switch (args[i]) {
+			case "--no-motifs": case "-n":
+				enumerate = false;
+				WarswapTask.setEnumerate(false);
+				break;
+			case "--motif-size": case "-s":
+				i++;
+				WarswapTask.setMotifSize(Integer.valueOf(args[i]));
+				break;
+			case "--threads": case "-t" :
+				i++;
+				threads = (int) Integer.valueOf(args[i]);
+				break;
+			case "--vertex-file": case "-v":
+				i++;
+				vertexFile = args[i];
+				break;
+			case "--help": case "-h":
+				System.out.println(helpMessage);
+				System.exit(0);
+			case "--motifs-outfile": case "-m":
+				i++;
+				motifsOutfile = args[i];
+				break;
+			default:  // Read positional arguments.
+				switch (position) {
+					case 0: graphfile = args[i]; break;
+					case 1: randOutdir = args[i]; break;
+					case 2: ngraphs = (int) Integer.valueOf(args[i]); break;
+					case 3: factor = (double) Double.valueOf(args[i]); break;
+				}
+				position++;
+				break;
+			}
+			i++;
+		}
+		if (position != 4) {
+			System.err.println("Four positional arguments are required!");
+			System.err.println(helpMessage);
+			System.exit(1);
+		}
+		WarswapTask[] tasks = runWarswap(graphfile, vertexFile, randOutdir, ngraphs, factor, threads);
+		if (enumerate) getResults(tasks, motifsOutfile, graphfile);
+		System.out.println("All done!");
+		System.exit(0);
+	}
+	
+	
+	private static WarswapTask[] runWarswap(String graphfile, String vertexFile, String rand_outdir, int ngraphs, double factor, int threads) {
 		/**
 		 * Create a number of threads and send them a fixed number of graphs to make so that ngraphs graphs are made in total. 
 		 * If vertexFile is given, use it during motif discovery.
 		 */
-		int[] tgtDegSeq = null;
-		int[] srcDegSeq = null;
+		//TODO: split the input edge file up into layers. Run the warswap algorithm on each layer, and then concatenate them.
+		int[] tgtDegSeq = null, srcDegSeq = null;
 		try {
 			LinkedList <int[]> degSeqs = Parsing.degreeSequences(graphfile);
 			tgtDegSeq = degSeqs.pop();
@@ -48,11 +116,13 @@ public class Main {
 			System.exit(1);
 		}
 		// Set up the vertex colors.
-		try {
-			HashGraph.readColors(vertexFile);
-		} catch(IOException e) {
-			System.err.println("Error reading file: " + vertexFile);
-			System.exit(1);
+		if (vertexFile != null) {
+			try {
+				HashGraph.readColors(vertexFile);
+			} catch(IOException e) {
+				System.err.println("Error reading file: " + vertexFile);
+				System.exit(1);
+			}
 		}
 		// For storing the counts of each subgraph type for statistcal analysis.
 		ExecutorService executor = Executors.newFixedThreadPool(threads);
@@ -61,7 +131,6 @@ public class Main {
 		int increment = ngraphs / threads;
 		int start = 0, end = increment;
 		WarswapTask[] tasks = new WarswapTask[threads];
-//		while(end < ngraphs - 1) {
 		for (int i = 0; i < threads; i++) {
 			tasks[i] = new WarswapTask(tgtDegSeq, srcDegSeq, rand_outdir, start, end, factor);
 			Future<?> f = executor.submit(tasks[i]);
@@ -69,9 +138,6 @@ public class Main {
 			start = end + 1;
 			end = Math.min(end + increment, ngraphs - 1);
 		}
-		
-		// Get the counts
-		HashMap <Long, LinkedList <Long>> allSubgraphCounts = new HashMap <Long, LinkedList <Long>>();
 		for (Future<?> f: futures)
 			try {
 				f.get();
@@ -79,14 +145,61 @@ public class Main {
 				e.printStackTrace();
 				System.exit(1);
 			}
-		for (int i = 0; i < threads; i++) {
-			HashMap <Long, LinkedList <Long>> subgraphsCount = tasks[i].getSubgraphCounts();
+		return tasks;
+	}
+	
+	
+	private static void getResults(WarswapTask[] tasks, String motifOutfile, String graphfile) {
+		// Get the counts
+		HashMap <Long, LinkedList <Long>> allSubgraphCounts = new HashMap <Long, LinkedList <Long>>();
+		for (WarswapTask task: tasks) {
+			HashMap <Long, LinkedList <Long>> subgraphsCount = task.getSubgraphCounts();
 			for (long key: subgraphsCount.keySet()) {
 				if (! allSubgraphCounts.containsKey(key)) allSubgraphCounts.put(key, new LinkedList <Long>());
 				allSubgraphCounts.get(key).addAll(subgraphsCount.get(key));	
 			}
 		}
-		//TODO: Must compare original subgraphs counts to randomized counts to get P-values. 
+		int[][] edgeArr = null;
+		try {
+			edgeArr = Parsing.parseEdgeListFile(graphfile);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+		LongLongOpenHashMap origSubgraphs = WarswapTask.getSubgraphs(edgeArr);
+		for (long key: origSubgraphs.keys) {
+		// Fill lists with zeros until all graphs have a count.
+		// (Normally, if a subgraph doesn't show up, it doesn't get a count.)
+			if (! allSubgraphCounts.containsKey(key)) {
+				allSubgraphCounts.put(key, new LinkedList<Long>());
+			}
+			while (allSubgraphCounts.get(key).size() < tasks.length) {
+				allSubgraphCounts.get(key).add((long) 0);
+			}
+			if (origSubgraphs.get(key) > 0) {
+				printSubgraphInfo(key, WarswapTask.getMotifSize(), allSubgraphCounts.get(key), origSubgraphs.get(key));
+			}
+		}
+	}
+	
+	private static void printSubgraphInfo(long subgID, int motifSize, LinkedList<Long> counts, long original) {
+		double pValue = Statistics.pValue(counts, original);
+		double zScore = Statistics.zScore(counts, original);
+		byte[] adjMatrix = ByteArray.longToByteArray(original, 2* motifSize * motifSize);
+		int adjPos = 0;  // track position in the adjacency matrix
+		for (int column = 0; column < motifSize; column++) {
+			System.out.print(adjMatrix[adjPos] + "\t");
+			adjPos++;
+		}
+		System.out.println(zScore + "\t" + pValue);
+		for (int row = 1; row < motifSize; row++) {
+			for (int column = 0; column < motifSize; column++) {
+				System.out.print(adjMatrix[adjPos] + "\t");
+				adjPos++;
+			}
+			System.out.println();
+		}
+		System.out.println();
 	}
 }
 

@@ -35,8 +35,6 @@ import java.util.Set;
 import com.carrotsearch.hppc.IntOpenHashSet;
 import com.google.common.primitives.Ints;
 
-import edu.osu.netmotifs.warswap.common.CONF;
-
 /**
  * @modified and commented by Mitra Ansariola
  * 
@@ -48,7 +46,7 @@ import edu.osu.netmotifs.warswap.common.CONF;
  * @modified by Zachary A. Bright
  */
 public class HashGraph implements Graph {
-    public List<Adjacency> table = new ArrayList<Adjacency>();
+    public static List<Adjacency> table = new ArrayList<Adjacency>();
 //    public Set<Integer> vertices = new HashSet<Integer>();
     private int edgeCount = 0;
     private boolean hasSelfLoop = false;
@@ -85,6 +83,10 @@ public class HashGraph implements Graph {
         return graph;
     }
 
+    public static void defaultColors(String graphfile) {
+    	
+    }
+    
     public static HashGraph readStructure(Reader reader) throws IOException {
         BufferedReader br = new BufferedReader(reader);
         String line;
@@ -119,17 +121,18 @@ public class HashGraph implements Graph {
     	 */
     	// Use this HashMap to keep the colors consistent whether numbers or names are used.
     	HashMap<String, Byte> colors = new HashMap<String, Byte>();
-    	colors.put("TF", Byte.valueOf("0"));
-    	colors.put("MIR", Byte.valueOf("1"));
-    	colors.put("GENE", Byte.valueOf("2"));
-    	colors.put("0", Byte.valueOf("0"));
-    	colors.put("1", Byte.valueOf("1"));
-    	colors.put("2", Byte.valueOf("2"));
+    	colors.put("TF", (byte) 0);
+    	colors.put("MIR", (byte) 1);
+    	colors.put("GENE", (byte) 2);
+    	colors.put("0", (byte) 0);
+    	colors.put("1", (byte) 1);
+    	colors.put("2", (byte) 2);
 
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
 			String line;
-			
+//			System.out.println("Reading the vertex file.");
 			while ((line = br.readLine()) != null) {
+//				System.out.println("line: " + line);
 			    if (line.isEmpty())
 			        continue;
 			    if (line.startsWith("#")) {
@@ -144,8 +147,8 @@ public class HashGraph implements Graph {
 			    if (vColorHash.containsKey(vtx)) {
 			    	throw new RuntimeException(vtx + "is listed in the vertex color file more than once.");
 			    }
-			    
 			    byte color = colors.get(tokens[1]);
+//			    System.out.println("vtx, color: " + vtx + "\t" + color);
 			    vColorHash.put(vtx, color);
 			}
 			br.close();
@@ -164,8 +167,9 @@ public class HashGraph implements Graph {
         for (int i = 0; i < edgeArr.length; i++) {
         	int src = edgeArr[i][0];
         	int tgt = edgeArr[i][1];
-        	byte color1 = vColorHash.get(src);
-        	byte color2 = vColorHash.get(tgt);
+        	// Use getOrDefault so users can provide a monocolor graph.
+        	byte color1 = vColorHash.getOrDefault(src, (byte) 0);
+        	byte color2 = vColorHash.getOrDefault(tgt, (byte) 0);
         	graph.addEdge(src, tgt, color1, color2);
         }
         graph.update();
@@ -200,12 +204,19 @@ public class HashGraph implements Graph {
         return vColorHash.keySet().contains(vertex);
     }
 
-    private void addVertex(int vertex, byte color) {
+    private void addVertex(int vertex) {
+//    	System.out.println("HashGraph.addVertex(" + vertex + ") was called.");
 //        vColorHash.put(vertex, color);  // Disabled by Zach because I want one static HashMap that won't be modified.
         while (table.size() <= vertex)
             table.add(new Adjacency());
     }
-
+    
+    private void addVertex(int vertex, byte color) {
+//    	System.out.println("HashGraph.addVertex(" + vertex + ", " + color + ") was called.");
+        vColorHash.put(vertex, color);
+        while (table.size() <= vertex)
+            table.add(new Adjacency());
+    }
     /**
      * Changed to store color of vertices
      * @param source
@@ -217,16 +228,14 @@ public class HashGraph implements Graph {
     	// ADDED by Mitra : not allowed to set self-loop edges in this way
     	// Instead we assign different colors to self loops
     	edgeCount++;
-    	if (source == dest && CONF.considerSelfloop()) {
+    	if (source == dest) {  //TODO: Make this toggle off if self-edges are not allowed.
     		addVertex(source, Byte.valueOf("3"));
     		return;
     	}
-    	
     	// Changed : store to vColorHash instead of vertices Hashset
-        if (!containsVertex(source))
-            addVertex(source, color1);
-        if (!containsVertex(dest))
-            addVertex(dest, color2);
+        addVertex(source);
+        addVertex(dest);
+//        System.out.println(table.get(source));
         table.get(source).outSet.add(dest);
         table.get(source).allSet.add(dest);
         table.get(dest).allSet.add(source);
@@ -275,15 +284,12 @@ public class HashGraph implements Graph {
             adj.outSet = new IntOpenHashSet(adj.outArr.length, 0.5f);
             adj.outSet.add(adj.outArr);
 
-
             adj.allArr = adj.allSet.toArray();
             Arrays.sort(adj.allArr);
             adj.allSet = new IntOpenHashSet(adj.allArr.length, 0.5f);
             adj.allSet.add(adj.allArr);
-
 //            edgeCount += adj.outArr.length;
         }
-
     }
 
     public void printInfo() {
