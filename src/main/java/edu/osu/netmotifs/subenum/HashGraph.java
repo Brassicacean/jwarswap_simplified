@@ -43,7 +43,6 @@ import com.google.common.primitives.Ints;
  * 
  * 1- Colors of vertices should be stored
  * 
- * @modified by Zachary A. Bright
  */
 public class HashGraph implements Graph {
     public static List<Adjacency> table = new ArrayList<Adjacency>();

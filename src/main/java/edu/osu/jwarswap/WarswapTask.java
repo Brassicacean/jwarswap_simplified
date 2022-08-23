@@ -2,6 +2,7 @@ package edu.osu.jwarswap;
 
 import edu.osu.netmotifs.subenum.Graph;
 import edu.osu.netmotifs.subenum.HashGraph;
+import edu.osu.netmotifs.subenum.MatGraph;
 import edu.osu.netmotifs.subenum.SMPEnumerator;
 
 import java.io.BufferedWriter;
@@ -58,7 +59,13 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	
 	
 	public static LongLongOpenHashMap getSubgraphs(int[][] edgeArr) {
-	    Graph graph = HashGraph.readStructure(edgeArr);
+		Graph graph;
+		if (edgeArr.length < 20000) {
+			graph = MatGraph.readStructure(edgeArr);
+			
+		} else {
+			graph = HashGraph.readStructure(edgeArr);
+		}
         SMPEnumerator.setMaxCount(Long.MAX_VALUE);
         LongLongOpenHashMap subgraphs = null;
         try {

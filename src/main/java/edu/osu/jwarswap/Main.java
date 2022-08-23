@@ -3,6 +3,7 @@ package edu.osu.jwarswap;
 import edu.osu.netmotifs.subenum.ByteArray;
 import edu.osu.netmotifs.subenum.Graph;
 import edu.osu.netmotifs.subenum.HashGraph;
+import edu.osu.netmotifs.subenum.MatGraph;
 import edu.osu.netmotifs.subenum.SMPEnumerator;
 
 import java.io.FileNotFoundException;
@@ -119,6 +120,7 @@ public class Main {
 		if (vertexFile != null) {
 			try {
 				HashGraph.readColors(vertexFile);
+				MatGraph.readColors(vertexFile);
 			} catch(IOException e) {
 				System.err.println("Error reading file: " + vertexFile);
 				System.exit(1);

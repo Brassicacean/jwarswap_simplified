@@ -36,6 +36,8 @@ import java.util.Set;
 import com.carrotsearch.hppc.IntOpenHashSet;
 import com.google.common.primitives.Ints;
 
+import edu.osu.netmotifs.subenum.HashGraph.Adjacency;
+
 /**
  * @modified and commented by Mitra Ansariola
  * 
@@ -52,7 +54,7 @@ public class MatGraph implements Graph {
     private boolean hasSelfLoop = false;
 
     // ADDED by Mitra
-    private HashMap<Integer, Byte> vColorHash = new HashMap<Integer, Byte>();
+    private static HashMap<Integer, Byte> vColorHash = new HashMap<Integer, Byte>();
     public byte[] adjArr;
 
     /**
@@ -127,6 +129,67 @@ public class MatGraph implements Graph {
         graph.update();
         return graph;
     }
+    
+    public static MatGraph readStructure(int[][] edgeArr) {
+    	/** 
+    	 * vColorHash must already exist. Read the graph structure from 
+    	 * a 2D array representing the edge list.
+    	 */
+        MatGraph graph = new MatGraph();
+        for (int i = 0; i < edgeArr.length; i++) {
+        	int src = edgeArr[i][0];
+        	int tgt = edgeArr[i][1];
+        	// Use getOrDefault so users can provide a monocolor graph.
+        	byte color1 = vColorHash.getOrDefault(src, (byte) 0);
+        	byte color2 = vColorHash.getOrDefault(tgt, (byte) 0);
+        	graph.addEdge(src, tgt, color1, color2);
+        }
+        graph.update();
+        return graph;
+    }
+    
+    public static void readColors(String path) throws IOException {
+    	/** 
+    	 * Read the colors from a file that maps vertices to colors. 
+    	 */
+    	// Use this HashMap to keep the colors consistent whether numbers or names are used.
+    	final HashMap<String, Byte> colors = new HashMap<String, Byte>();
+    	colors.put("TF", (byte) 0);
+    	colors.put("MIR", (byte) 1);
+    	colors.put("GENE", (byte) 2);
+    	colors.put("0", (byte) 0);
+    	colors.put("1", (byte) 1);
+    	colors.put("2", (byte) 2);
+
+        try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+			String line;
+//			System.out.println("Reading the vertex file.");
+			while ((line = br.readLine()) != null) {
+//				System.out.println("line: " + line);
+			    if (line.isEmpty())
+			        continue;
+			    if (line.startsWith("#")) {
+			        System.out.printf("Skipped a line: [%s]\n", line);
+			        continue;
+			    }
+			    String[] tokens = line.split("\\s+");
+			    if (tokens.length < 2) {
+			        throw new IOException("The input file is malformed!");
+			    }
+			    int vtx = Integer.parseInt(tokens[0]);
+			    if (vColorHash.containsKey(vtx)) {
+			    	throw new RuntimeException(vtx + "is listed in the vertex color file more than once.");
+			    }
+			    byte color = colors.get(tokens[1]);
+//			    System.out.println("vtx, color: " + vtx + "\t" + color);
+			    vColorHash.put(vtx, color);
+			}
+			br.close();
+		} catch (NumberFormatException e) {
+			e.printStackTrace();
+			throw e;
+		}
+    }
 
     public static MatGraph readFromFile(String path) throws IOException {
         return readColoredGraph(new FileReader(path));
@@ -157,8 +220,16 @@ public class MatGraph implements Graph {
         return vColorHash.keySet().contains(vertex);
     }
 
+    private void addVertex(int vertex) {
+//    	System.out.println("HashGraph.addVertex(" + vertex + ") was called.");
+//        vColorHash.put(vertex, color);  // Disabled by Zach because I want one static HashMap that won't be modified.
+        while (table.size() <= vertex)
+            table.add(new Adjacency());
+    }
+    
     private void addVertex(int vertex, byte color) {
-    	vColorHash.put(vertex, color);
+//    	System.out.println("HashGraph.addVertex(" + vertex + ", " + color + ") was called.");
+        vColorHash.put(vertex, color);
         while (table.size() <= vertex)
             table.add(new Adjacency());
     }
@@ -182,10 +253,8 @@ public class MatGraph implements Graph {
     		addVertex(source, Byte.valueOf("3"));
     		return;
     	}
-        if (!containsVertex(source))
-            addVertex(source, color1);
-        if (!containsVertex(dest))
-            addVertex(dest, color2);
+        addVertex(source);
+        addVertex(dest);
         table.get(source).outSet.add(dest);
         table.get(source).allSet.add(dest);
         table.get(dest).allSet.add(source);
