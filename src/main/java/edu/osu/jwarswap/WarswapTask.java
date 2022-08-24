@@ -62,7 +62,6 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 		Graph graph;
 		if (edgeArr.length < 20000) {
 			graph = MatGraph.readStructure(edgeArr);
-			
 		} else {
 			graph = HashGraph.readStructure(edgeArr);
 		}

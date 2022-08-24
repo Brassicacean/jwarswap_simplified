@@ -311,7 +311,6 @@ public class MatGraph implements Graph {
                 arr[k++] = adjArr[vertex_set[i] * table.size() + vertex_set[j]];
         }
         return ByteArray.byteArrayToLong(arr);
-
     }
     
 	@Override
@@ -366,7 +365,7 @@ public class MatGraph implements Graph {
     			adjArr[v * table.size() + w] = 1;
     		
     		// ADDED by Mitra
-    		adjArr[v * table.size() + v] = vColorHash.get(v);
+    		adjArr[v * table.size() + v] = vColorHash.get(v);  // (ZAB) Note: Diagonals == own color?
     		
     		adj.outSet = new IntOpenHashSet(adj.outArr.length, 0.5f);
     		adj.outSet.add(adj.outArr);

@@ -6,6 +6,7 @@ import edu.osu.netmotifs.subenum.HashGraph;
 import edu.osu.netmotifs.subenum.MatGraph;
 import edu.osu.netmotifs.subenum.SMPEnumerator;
 
+import java.io.FileWriter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Scanner;
@@ -35,7 +36,8 @@ public class Main {
 			"\t--vertex-file VERTEX_FILE, -v VERTEX_FILE: Use the file, VERTEX_FILE, to provide the colors of the vertices.\n" +
 			"\t--help, -h: Print this help message.\n" +
 			"\t--no-motifs, -n: Don't enumarate subgraphs to find motifs.\n" + 
-			"\t--motif-size SIZE, -s SIZE: Enumerate motifs of size SIZE. Don't use a size greater than 5.";
+			"\t--motif-size SIZE, -s SIZE: Enumerate motifs of size SIZE. Don't use a size greater than 5." +
+			"\t--motif-outfile FILE, -o FILE: Write motif discovery results to FILE.";
 	private static String motifsOutfile = null;
 	public static void main(String[] args) {
 		parseArguments(args);
@@ -73,7 +75,7 @@ public class Main {
 			case "--help": case "-h":
 				System.out.println(helpMessage);
 				System.exit(0);
-			case "--motifs-outfile": case "-m":
+			case "--motif-outfile": case "-o":
 				i++;
 				motifsOutfile = args[i];
 				break;
@@ -169,6 +171,7 @@ public class Main {
 			System.exit(1);
 		}
 		LongLongOpenHashMap origSubgraphs = WarswapTask.getSubgraphs(edgeArr);
+		String outBuffer = "Adj. matrix\tZ-Score\tP-Value\n";
 		for (long key: origSubgraphs.keys) {
 		// Fill lists with zeros until all graphs have a count.
 		// (Normally, if a subgraph doesn't show up, it doesn't get a count.)
@@ -179,31 +182,46 @@ public class Main {
 				allSubgraphCounts.get(key).add((long) 0);
 			}
 			if (origSubgraphs.get(key) > 0) {
-				printSubgraphInfo(key, WarswapTask.getMotifSize(), allSubgraphCounts.get(key), origSubgraphs.get(key));
+				outBuffer = outBuffer.concat(
+						subgraphInfo(key, WarswapTask.getMotifSize(),allSubgraphCounts.get(key), origSubgraphs.get(key)));
+			}
+		}
+		if (motifOutfile == null) {
+			System.out.print(outBuffer);
+		} else {
+			try {
+				FileWriter outFileWriter = new FileWriter(motifOutfile);
+				outFileWriter.write(outBuffer);
+				outFileWriter.close();
+			} catch(IOException e) {
+				System.err.println("An error occured while attempting to create " + motifOutfile);
+				System.exit(1);
 			}
 		}
 	}
 	
-	private static void printSubgraphInfo(long subgID, int motifSize, LinkedList<Long> counts, long original) {
+	private static String subgraphInfo(long subgID, int motifSize, LinkedList<Long> counts, long original) {
+		String outBuffer = "";
 		double pValue = Statistics.pValue(counts, original);
 		double zScore = Statistics.zScore(counts, original);
-		byte[] adjMatrix = ByteArray.longToByteArray(original, 2* motifSize * motifSize);
+		byte[] adjMatrix = ByteArray.longToByteArray(subgID, 2* motifSize * motifSize);
 		int adjPos = 0;  // track position in the adjacency matrix
+		// Write the first row.
 		for (int column = 0; column < motifSize; column++) {
-			System.out.print(adjMatrix[adjPos] + "\t");
+			outBuffer = outBuffer.concat(adjMatrix[adjPos] + " ");
 			adjPos++;
 		}
-		System.out.println(zScore + "\t" + pValue);
+		// Write the Z-score and P-value. 
+		outBuffer = outBuffer.concat("\t" + zScore + "\t" + pValue + "\n");
+		// Finish writing the rows.
 		for (int row = 1; row < motifSize; row++) {
 			for (int column = 0; column < motifSize; column++) {
-				System.out.print(adjMatrix[adjPos] + "\t");
+				outBuffer = outBuffer.concat(adjMatrix[adjPos] + " ");
 				adjPos++;
 			}
-			System.out.println();
+			outBuffer = outBuffer.concat("\n");
 		}
-		System.out.println();
+		outBuffer = outBuffer.concat("\n");  // One more line to separate entries.
+		return outBuffer;
 	}
 }
-
-	
-	

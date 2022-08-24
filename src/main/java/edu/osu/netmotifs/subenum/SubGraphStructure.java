@@ -110,7 +110,7 @@ public class SubGraphStructure {
         long[] ranks = new long[nodes.length];
 
         /** MA: Ranking the vertices based on their in/out degree
-         *  Rank of vertex v = ((out-degree * motifSize) + in-degree) * (color + 1)
+         *  Rank of vertex v = ((out-degree * motifSize) + in-degree) + 100^(color)
          *  Sort vertices based on ranked (Ascending order)
          */
         result.nodes = nodes.clone();
