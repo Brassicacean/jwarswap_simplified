@@ -24,20 +24,14 @@ public class IntFenwickTree {
 	private int[] constructTree(int[] inArr) {
 		// It's a convenience for indexing to use the first index as the root.
 		tree = new int[inArr.length +1];
-//		System.out.println("Tree: ");
 		for (int i = 0; i < tree.length - 1; i++) {
 			update(i, inArr[i]);
 		}
-//		for (int n: tree) System.out.print(n + " ");
-//		System.out.println();
 		return tree;
 	}
 	
 	public void update(int index, int value) {
 		int delta = value - this.arr[index];
-//		System.out.println("this.arr[index]: " + this.arr[index]);
-//		System.out.println("value: " + value);
-//		System.out.println("delta: " + delta);
 		this.arr[index] = value;  // Update the value itself.
 		index += 1;  // Shift to 1-based indexing
 		while (index <= this.arr.length) {
@@ -63,9 +57,10 @@ public class IntFenwickTree {
 	}
 
 	public int search(int s) {
-		// Magical method by David Eisenstat to find the index of the first
-		// index in the array represented by a Fenwick tree where the sum of
-		// the elements up to it is less than s.
+		/** Magical method by David Eisenstat to find the index of the first
+		 * index in the array represented by a Fenwick tree where the sum of
+		 * the elements up to it is less than s.
+		*/
 		
 		// Find the highest power of 2 in the tree.
 		int level = 1;
@@ -76,7 +71,6 @@ public class IntFenwickTree {
 		// Start one place behind the highest power of 2.
 		int offset = 0;
 		while (level > 0) {
-//			System.out.println("Searching: " + level + " " + offset);
 			// If the sum is too small, 
 			if (offset + level < tree.length) {
 				if (s > tree[offset + level]) {

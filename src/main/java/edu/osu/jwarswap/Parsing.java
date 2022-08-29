@@ -12,22 +12,19 @@ import java.util.Scanner;
 public class Parsing {
 
 	public static LinkedList<int[]> degreeSequences(String graphfile)
-	/** Read the file given by the input string and produce a pair of degree sequences
-	 * interpreting the file as a directed edge list.*/
 	throws FileNotFoundException{
+		/** Read the file given by the input string and produce a pair of degree sequences
+		 * interpreting the file as a directed edge list.*/
 		File edgelistFile = new File(graphfile);
 		Scanner edgelistScanner = new Scanner(edgelistFile);
 		// Count the number of connections with each node in them.
-		// Treat the edge list as bipartite for the sake of making the degree
-		// sequences i.e. If it's bipartite, each node is treated as a separate source and target node.
 		HashMap <Integer, Integer> srcHashMap = new HashMap <Integer, Integer> ();
 		HashMap <Integer, Integer> tgtHashMap = new HashMap <Integer, Integer> ();
 		while(edgelistScanner.hasNextLine()) {
 			String line = edgelistScanner.nextLine();
 			Scanner lineScanner = new Scanner(line);
-			int src = Integer.valueOf(lineScanner.findInLine("^\\d+"));
-			int tgt = Integer.valueOf(lineScanner.findInLine("\\d+$"));
-//			System.out.println(src + " " + tgt);
+			int src = lineScanner.nextInt();
+			int tgt = lineScanner.nextInt();
 			srcHashMap.put(src, srcHashMap.getOrDefault(src, 0) + 1);
 			tgtHashMap.put(tgt, tgtHashMap.getOrDefault(tgt, 0) + 1);
 			lineScanner.close();

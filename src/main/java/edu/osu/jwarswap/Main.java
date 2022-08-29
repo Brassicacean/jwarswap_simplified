@@ -36,8 +36,9 @@ public class Main {
 			"\t--vertex-file VERTEX_FILE, -v VERTEX_FILE: Use the file, VERTEX_FILE, to provide the colors of the vertices.\n" +
 			"\t--help, -h: Print this help message.\n" +
 			"\t--no-motifs, -n: Don't enumarate subgraphs to find motifs.\n" + 
-			"\t--motif-size SIZE, -s SIZE: Enumerate motifs of size SIZE. Don't use a size greater than 5." +
-			"\t--motif-outfile FILE, -o FILE: Write motif discovery results to FILE.";
+			"\t--motif-size SIZE, -s SIZE: Enumerate motifs of size SIZE. Don't use a size greater than 5.\n" +
+			"\t--motif-outfile FILE, -o FILE: Write motif discovery results to FILE." +
+			"\t--no-self-loops: Don't allow self-loops during graph randomization.";
 	private static String motifsOutfile = null;
 	public static void main(String[] args) {
 		parseArguments(args);
@@ -56,6 +57,9 @@ public class Main {
 		int i = 0;
 		while (i < args.length) {
 			switch (args[i]) {
+			case "--no-self-loops":
+				FenwickEdgeGenerator.setSelfLoop(false);
+				break;
 			case "--no-motifs": case "-n":
 				enumerate = false;
 				WarswapTask.setEnumerate(false);
@@ -118,6 +122,11 @@ public class Main {
 			System.err.println("File not found: " + graphfile);
 			System.exit(1);
 		}
+		System.out.println("Degree sequences:");
+		for (int deg: srcDegSeq) System.out.print(deg + " ");
+		System.out.println();
+		for (int deg: tgtDegSeq) System.out.print(deg + " ");
+		System.out.println();
 		// Set up the vertex colors.
 		if (vertexFile != null) {
 			try {

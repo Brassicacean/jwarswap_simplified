@@ -12,6 +12,12 @@ public class FenwickEdgeGenerator {
 	private double factor;
 	private Random random;
 	
+	private static boolean selfLoops = true;
+	
+	public static void setSelfLoop(boolean loop) {
+		selfLoops = loop;
+	}
+	
 	FenwickEdgeGenerator(int[] tgtDegrees, double factor){
 		this.random = new Random();
 		this.degrees = Arrays.copyOf(tgtDegrees, tgtDegrees.length);
@@ -55,7 +61,6 @@ public class FenwickEdgeGenerator {
 		// combination of degreeTree and capacityTree, which represent positive arrays,
 		// and we have chosen k such that weightTree[i] = capacity[i] * (1 - k * degree[i])
 		// is always positive.
-//		System.out.println("doubleSearch on: " + sum + ", " + K);
 		int level = 1;
 		while (level < this.degreeCapacityTree.tree.length) {
 			level <<= 1;
@@ -74,20 +79,16 @@ public class FenwickEdgeGenerator {
 			}
 			level >>= 1;
 		}
-//		System.out.println("Returning offset: " + offset);
 		return offset;
 	}
 
 	public int selectTarget(int srcDeg) {
 		/** Selects a random target using Bayati et al's weight formula. */
 		int maxCap = this.capacityTree.getSumTo(this.nVertices - 1);
-//		System.out.println("maxCap: " + maxCap);
 		double K = srcDeg / (this.factor * this.mEdges);
 		double r = this.random.nextDouble();
 		double maxWeight = (double) maxCap -
 				K * (double) this.degreeCapacityTree.getSumTo(this.nVertices - 1);
-//		System.out.println("maxWeight: " + maxWeight);
-//		System.out.println("Max degree * capacity: " + this.degreeCapacityTree.getSumTo(this.nVertices - 1));
 		double sum = r * maxWeight; // TODO: Is this numerically stable?
 		return this.doubleSearch(sum, K);
 	}
@@ -103,22 +104,28 @@ public class FenwickEdgeGenerator {
 		return target;
 	}
 	
-	public int[] fillSrcVtx(int srcDeg) {
-//		System.out.println("srcDeg: " + srcDeg);
-		// Form all edges for a given source vertex, sampling without replacement.
-		// One target for each "slot" in the source plus one at the end to say how
-		// much swapping is needed.
+	public int[] fillSrcVtx(int srcVtx, int srcDeg) {
+		/**
+		* Form all edges for a given source vertex, sampling without replacement.
+		* One target for each "slot" in the source plus one at the end to say how
+		* much swapping is needed.
+		*/
+		// If self-loops aren't allowed, set probability of self-connection to 0.
+		int sameDeg = 0, sameDegCap = 0;
+		if (! selfLoops) {
+			sameDeg = this.capacityTree.getValueOf(srcVtx);
+			this.capacityTree.update(srcVtx, 0);
+			sameDegCap = this.capacityTree.getValueOf(srcVtx);
+			this.degreeCapacityTree.update(srcVtx, 0);
+		}
 		int[] targets = new int[srcDeg + 1];
 		int[] capacities = new int[srcDeg];
 		int room = this.capacityTree.getSumTo(this.nVertices - 1) - srcDeg; 
-//		System.out.println("Room: " + room);
 		// Select all the targets, record all their capacities, set the capacities to 0.
 		for (int i = 0; i < srcDeg; i++) {
 			// If an edge can't be formed, return targets with a signal to initiate edge-swapping.
 			if (room < 0) {
-//				System.out.println("Source vertex cannot be filled.");
 				targets[srcDeg]++;  // Increase the indicated number of unfilled edges.
-//				return targets;
 			} else {
 				int target = formEdge(srcDeg);
 				targets[i] = target;
@@ -135,6 +142,10 @@ public class FenwickEdgeGenerator {
 		for (int i = 0; i < srcDeg - targets[srcDeg]; i++) {
 			this.capacityTree.update(targets[i], capacities[i]);
 			this.degreeCapacityTree.update(targets[i], capacities[i] * this.degrees[targets[i]]);
+		}
+		if (! selfLoops) {
+			this.capacityTree.update(srcVtx, sameDeg);
+			this.degreeCapacityTree.update(srcVtx, sameDegCap);
 		}
 		return targets;
 	}

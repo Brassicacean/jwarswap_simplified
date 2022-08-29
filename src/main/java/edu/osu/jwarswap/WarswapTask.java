@@ -23,8 +23,13 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	private double factor;
 	private static int motifSize = 3;
 	private static boolean enumerate = true;
+	private static boolean selfLoop = false;
 	private HashMap <Long, LinkedList <Long>> subgraphCounts = new HashMap <Long, LinkedList <Long>>();
 
+	
+	public static void setSelfLoop(boolean loop) {
+		selfLoop = loop;
+	}
 	
 	public static void setMotifSize(int size) {
 		motifSize = size;
@@ -57,7 +62,6 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 		return subgraphCounts;
 	}
 	
-	
 	public static LongLongOpenHashMap getSubgraphs(int[][] edgeArr) {
 		Graph graph;
 		if (edgeArr.length < 20000) {
@@ -77,11 +81,6 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	}
 	
 	public void run() {
-		System.out.println("Degree sequences:");
-		for (int deg: srcDegSeq) System.out.print(deg + " ");
-		System.out.println();
-		for (int deg: tgtDegSeq) System.out.print(deg + " ");
-		System.out.println();
 		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor);
 		for (int job = start; job <= end; job++) {
 			// Make each graph in this loop and write it to a file as a tab-separated edge list.
@@ -95,7 +94,7 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 		    	}
 		    	writer.close();
 		    } catch (IOException e) {
-				System.err.println("Error occurred wile creating file " + filepath);
+				System.err.println("Error occurred while creating file " + filepath);
 //				e.printStackTrace();
 				System.exit(1);
 			}
