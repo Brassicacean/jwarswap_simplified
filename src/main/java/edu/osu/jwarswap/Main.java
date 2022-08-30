@@ -1,22 +1,16 @@
 package edu.osu.jwarswap;
 
 import edu.osu.netmotifs.subenum.ByteArray;
-import edu.osu.netmotifs.subenum.Graph;
 import edu.osu.netmotifs.subenum.HashGraph;
 import edu.osu.netmotifs.subenum.MatGraph;
-import edu.osu.netmotifs.subenum.SMPEnumerator;
 
 import java.io.FileWriter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Scanner;
-import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.HashMap;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,6 +19,14 @@ import java.util.concurrent.Future;
 import com.carrotsearch.hppc.LongLongOpenHashMap;
 
 public class Main {
+	private static String graphfile = null;
+	private static String randOutdir = null;
+	private static int ngraphs = 0;
+	private static double factor = 0;
+	private static int threads = 1	;
+	private static String vertexFile = null;
+	private static boolean enumerate = true;
+	
 	private final static String helpMessage = 
 			"java -jar jwarswap.jar [Options] graphfile rand-outdir ngraphs factor\n" +
 			"graphfile: A two-column edge-list separated by tabs.\n" +
@@ -40,19 +42,19 @@ public class Main {
 			"\t--motif-outfile FILE, -o FILE: Write motif discovery results to FILE." +
 			"\t--no-self-loops: Don't allow self-loops during graph randomization.";
 	private static String motifsOutfile = null;
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		parseArguments(args);
+		
+//		int[][] edgeArray = Parsing.parseEdgeListFile(graphfile);
+//		HashMap<Integer, Byte> vColorHash = Parsing.readColors(vertexFile);
+//		WarswapTask.prepareGenerators(edgeArray, vColorHash, factor);
+		WarswapTask[] tasks = runWarswap(graphfile, vertexFile, randOutdir, ngraphs, factor, threads);
+		if (enumerate) getResults(tasks, motifsOutfile, graphfile);
+		System.out.println("All done!");
+		System.exit(0);
 	}
 	
 	private static void parseArguments(String[] args) {
-		String graphfile = null;
-		String randOutdir = null;
-		int ngraphs = 0;
-		double factor = 0;
-		int threads = 1	;
-		String vertexFile = null;
-		boolean enumerate = true;
-		
 		int position = 0;
 		int i = 0;
 		while (i < args.length) {
@@ -100,19 +102,8 @@ public class Main {
 			System.err.println(helpMessage);
 			System.exit(1);
 		}
-		WarswapTask[] tasks = runWarswap(graphfile, vertexFile, randOutdir, ngraphs, factor, threads);
-		if (enumerate) getResults(tasks, motifsOutfile, graphfile);
-		System.out.println("All done!");
-		System.exit(0);
 	}
-	
-	
-	private static WarswapTask[] runWarswap(String graphfile, String vertexFile, String rand_outdir, int ngraphs, double factor, int threads) {
-		/**
-		 * Create a number of threads and send them a fixed number of graphs to make so that ngraphs graphs are made in total. 
-		 * If vertexFile is given, use it during motif discovery.
-		 */
-		//TODO: split the input edge file up into layers. Run the warswap algorithm on each layer, and then concatenate them.
+	private static void printGraphInfo(String graphFile) {
 		int[] tgtDegSeq = null, srcDegSeq = null;
 		try {
 			LinkedList <int[]> degSeqs = Parsing.degreeSequences(graphfile);
@@ -127,25 +118,45 @@ public class Main {
 		System.out.println();
 		for (int deg: tgtDegSeq) System.out.print(deg + " ");
 		System.out.println();
+	}
+	
+	private static WarswapTask[] runWarswap(String graphfile, String vertexFile, String rand_outdir, int ngraphs, double factor, int threads) 
+			throws FileNotFoundException {
+		/**
+		 * Create a number of threads and send them a fixed number of graphs to make so that ngraphs graphs are made in total. 
+		 * If vertexFile is given, use it during motif discovery.
+		 */
+		printGraphInfo(graphfile);
 		// Set up the vertex colors.
+		HashMap<Integer, Byte> vColorHash = null;
 		if (vertexFile != null) {
 			try {
-				HashGraph.readColors(vertexFile);
-				MatGraph.readColors(vertexFile);
+				vColorHash = Parsing.readColors(vertexFile);
+				HashGraph.assignColors(vColorHash);
+				MatGraph.assignColors(vColorHash);
 			} catch(IOException e) {
 				System.err.println("Error reading file: " + vertexFile);
 				System.exit(1);
 			}
 		}
-		// For storing the counts of each subgraph type for statistcal analysis.
+		// For storing the counts of each subgraph type for statistical analysis.
 		ExecutorService executor = Executors.newFixedThreadPool(threads);
 		List<Future<?>> futures = new ArrayList<>();
 		// Create the first interval.
 		int increment = ngraphs / threads;
 		int start = 0, end = increment;
 		WarswapTask[] tasks = new WarswapTask[threads];
+		int[][] edgeList = Parsing.parseEdgeListFile(graphfile);
 		for (int i = 0; i < threads; i++) {
-			tasks[i] = new WarswapTask(tgtDegSeq, srcDegSeq, rand_outdir, start, end, factor);
+			tasks[i] = new WarswapTask(rand_outdir, start, end);
+			// Must set up the graph generators. If there is a color file, then there is a
+			// different procedure, because there are different layers that must be created
+			// separately.
+			if (vertexFile != null) {
+				tasks[i].prepareGenerators(edgeList, vColorHash, factor);
+			} else {
+				tasks[i].prepareGenerators(edgeList, factor);
+			}
 			Future<?> f = executor.submit(tasks[i]);
 			futures.add(f);
 			start = end + 1;

@@ -36,7 +36,6 @@ import java.util.Set;
 import com.carrotsearch.hppc.IntOpenHashSet;
 import com.google.common.primitives.Ints;
 
-import edu.osu.netmotifs.subenum.HashGraph.Adjacency;
 
 /**
  * @modified and commented by Mitra Ansariola
@@ -57,6 +56,11 @@ public class MatGraph implements Graph {
     private static HashMap<Integer, Byte> vColorHash = new HashMap<Integer, Byte>();
     public byte[] adjArr;
 
+    
+    public static void assignColors(HashMap<Integer, Byte> colorHash) {
+    	vColorHash = colorHash;
+    }
+    
     /**
      * @author mitra 
      * The readStructure method is modified to read colored graphs 
@@ -148,49 +152,6 @@ public class MatGraph implements Graph {
         return graph;
     }
     
-    public static void readColors(String path) throws IOException {
-    	/** 
-    	 * Read the colors from a file that maps vertices to colors. 
-    	 */
-    	// Use this HashMap to keep the colors consistent whether numbers or names are used.
-    	final HashMap<String, Byte> colors = new HashMap<String, Byte>();
-    	colors.put("TF", (byte) 0);
-    	colors.put("MIR", (byte) 1);
-    	colors.put("GENE", (byte) 2);
-    	colors.put("0", (byte) 0);
-    	colors.put("1", (byte) 1);
-    	colors.put("2", (byte) 2);
-
-        try (BufferedReader br = new BufferedReader(new FileReader(path))) {
-			String line;
-//			System.out.println("Reading the vertex file.");
-			while ((line = br.readLine()) != null) {
-//				System.out.println("line: " + line);
-			    if (line.isEmpty())
-			        continue;
-			    if (line.startsWith("#")) {
-			        System.out.printf("Skipped a line: [%s]\n", line);
-			        continue;
-			    }
-			    String[] tokens = line.split("\\s+");
-			    if (tokens.length < 2) {
-			        throw new IOException("The input file is malformed!");
-			    }
-			    int vtx = Integer.parseInt(tokens[0]);
-			    if (vColorHash.containsKey(vtx)) {
-			    	throw new RuntimeException(vtx + "is listed in the vertex color file more than once.");
-			    }
-			    byte color = colors.get(tokens[1]);
-//			    System.out.println("vtx, color: " + vtx + "\t" + color);
-			    vColorHash.put(vtx, color);
-			}
-			br.close();
-		} catch (NumberFormatException e) {
-			e.printStackTrace();
-			throw e;
-		}
-    }
-
     public static MatGraph readFromFile(String path) throws IOException {
         return readColoredGraph(new FileReader(path));
     }

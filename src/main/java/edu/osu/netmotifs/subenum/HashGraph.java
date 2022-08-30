@@ -48,10 +48,14 @@ public class HashGraph implements Graph {
     public static List<Adjacency> table = new ArrayList<Adjacency>();
 //    public Set<Integer> vertices = new HashSet<Integer>();
     private int edgeCount = 0;
-    private boolean hasSelfLoop = false;
+    private boolean hasSelfLoop = false;  // This is probably obsolete.
     
  // ADDED by Mitra
     private static HashMap<Integer, Byte> vColorHash = new HashMap<Integer, Byte>();
+    
+    public static void assignColors(HashMap<Integer, Byte> colorHash) {
+    	vColorHash = colorHash;
+    }
     
     public static HashGraph readGraph(Reader reader) throws IOException {
         BufferedReader br = new BufferedReader(reader);
@@ -114,48 +118,6 @@ public class HashGraph implements Graph {
         return graph;
     }
     
-    public static void readColors(String path) throws IOException {
-    	/** 
-    	 * Read the colors from a file that maps vertices to colors. 
-    	 */
-    	// Use this HashMap to keep the colors consistent whether numbers or names are used.
-    	HashMap<String, Byte> colors = new HashMap<String, Byte>();
-    	colors.put("TF", (byte) 0);
-    	colors.put("MIR", (byte) 1);
-    	colors.put("GENE", (byte) 2);
-    	colors.put("0", (byte) 0);
-    	colors.put("1", (byte) 1);
-    	colors.put("2", (byte) 2);
-
-        try (BufferedReader br = new BufferedReader(new FileReader(path))) {
-			String line;
-//			System.out.println("Reading the vertex file.");
-			while ((line = br.readLine()) != null) {
-//				System.out.println("line: " + line);
-			    if (line.isEmpty())
-			        continue;
-			    if (line.startsWith("#")) {
-			        System.out.printf("Skipped a line: [%s]\n", line);
-			        continue;
-			    }
-			    String[] tokens = line.split("\\s+");
-			    if (tokens.length < 2) {
-			        throw new IOException("The input file is malformed!");
-			    }
-			    int vtx = Integer.parseInt(tokens[0]);
-			    if (vColorHash.containsKey(vtx)) {
-			    	throw new RuntimeException(vtx + "is listed in the vertex color file more than once.");
-			    }
-			    byte color = colors.get(tokens[1]);
-//			    System.out.println("vtx, color: " + vtx + "\t" + color);
-			    vColorHash.put(vtx, color);
-			}
-			br.close();
-		} catch (NumberFormatException e) {
-			e.printStackTrace();
-			throw e;
-		}
-    }
     
     public static HashGraph readStructure(int[][] edgeArr) {
     	/** 

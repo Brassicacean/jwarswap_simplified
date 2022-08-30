@@ -17,18 +17,25 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
  class WarswapTask implements Runnable{
 	private Thread thread;
 	private String threadname;
-	private int[] tgtDegSeq, srcDegSeq;
 	private String rand_outdir;
 	private int start, end;
-	private double factor;
 	private static int motifSize = 3;
 	private static boolean enumerate = true;
-	private static boolean selfLoop = false;
+	private LinkedList<FenwickRandomGraphGenerator> genList;
 	private HashMap <Long, LinkedList <Long>> subgraphCounts = new HashMap <Long, LinkedList <Long>>();
-
 	
-	public static void setSelfLoop(boolean loop) {
-		selfLoop = loop;
+	public void prepareGenerators(int[][] edgeList, HashMap<Integer, Byte> vColorHash, double factor) {
+		this.genList = Setup.getLayerGenerators(edgeList, vColorHash, factor);
+	}
+	
+	public void prepareGenerators(int[][] edgeList, double factor) {
+		LinkedList<int[]> degSeqs = Setup.degreeSequences(edgeList);
+		int[] tgtDegSeq = degSeqs.pop();
+		int[] srcDegSeq = degSeqs.pop();
+		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor);
+		LinkedList<FenwickRandomGraphGenerator> genList = new LinkedList<FenwickRandomGraphGenerator>();
+		genList.add(gen);
+		this.genList = genList;
 	}
 	
 	public static void setMotifSize(int size) {
@@ -39,24 +46,19 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 		enumerate = bool;
 	}
 	
-	
 	public static int getMotifSize() {
 		return motifSize;
 	}
 	
 	
-	public WarswapTask(int[] tgtDegSeq, int[] srcDegSeq, String rand_outdir, int start, int end, double factor){
+	public WarswapTask(String rand_outdir, int start, int end){
 		// Task to make random networks and write them to files.
 		// Will work on a single thread and either pull numbers from a
 		// queue or just receive a list at the start of jobs to do.
-		this.tgtDegSeq = tgtDegSeq;
-		this.srcDegSeq = srcDegSeq;
 		this.rand_outdir = rand_outdir;
 		this.start = start;
 		this.end = end;
-		this.factor = factor;
 	}
-	
 
 	public HashMap <Long, LinkedList <Long>> getSubgraphCounts(){
 		return subgraphCounts;
@@ -80,17 +82,30 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
         return subgraphs;
 	}
 	
+	
 	public void run() {
-		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor);
+		int edges = 0;
+		for (FenwickRandomGraphGenerator gen: genList) edges += gen.countEdges();
+		// Make each graph in this loop and write it to a file as a tab-separated edge list.
+		// Each graph is made layer by layer. The layers are concatenated to a single edge-list.
 		for (int job = start; job <= end; job++) {
-			// Make each graph in this loop and write it to a file as a tab-separated edge list.
-			int[][] edgeArr = gen.generate();
+			int[][] finalEdgeArr = new int[edges][2];
+			int cursor = 0;
+			for (FenwickRandomGraphGenerator gen: genList) {
+				int[][] edgeArr = gen.generate();
+				for (int i = 0; i < edgeArr.length; i++) {
+					finalEdgeArr[cursor + i][0] = edgeArr[i][0];
+					finalEdgeArr[cursor + i][1] = edgeArr[i][1];
+				}
+				cursor += edgeArr.length;
+			}
+			
 			String filepath = rand_outdir + "/" + "randgraph." + job + ".tsv";
 		    try {
 			    BufferedWriter writer = new BufferedWriter(new FileWriter(filepath));
 		    	// Write the edge-list as a tsv.
-		    	for (int row = 0; row < edgeArr.length; row++) {
-		    		writer.write(edgeArr[row][0] + "\t" + edgeArr[row][1] + "\n");
+		    	for (int row = 0; row < finalEdgeArr.length; row++) {
+		    		writer.write(finalEdgeArr[row][0] + "\t" + finalEdgeArr[row][1] + "\n");
 		    	}
 		    	writer.close();
 		    } catch (IOException e) {
@@ -100,7 +115,7 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 			}
 		    // Enumerate subgraphs in edgeArr and add the counts to subgraphCounts in the appropriate locations.
 		    if (enumerate) {
-		    	LongLongOpenHashMap subgraphs = getSubgraphs(edgeArr);
+		    	LongLongOpenHashMap subgraphs = getSubgraphs(finalEdgeArr);
 	            for (long key: subgraphs.keys) {
 	            	if (!subgraphCounts.containsKey(key)) {
 	            		subgraphCounts.put(key, new LinkedList<Long>());
@@ -128,10 +143,13 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 		thread.start();
 	}
 	
-	public static void main() {
-		int[] tDegSeq = {5,5,4,3,2};
-		int[] sDegSeq = {5,5,3,3,3};
-		WarswapTask test1 = new WarswapTask(tDegSeq, sDegSeq, "/home/zachary/Documents/rand_outgraphs_test", 0, 10, 20.0);
+	public static void main(String[] args) {
+		int[] tDegSeq = {7,6,6,5,5,5,4,3,2};
+		int[] sDegSeq = {7,6,6,5,5,5,3,3,3};
+		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(sDegSeq, tDegSeq, 6.0);
+		WarswapTask test1 = new WarswapTask("/home/zachary/test_warswap_fenwick_trees", 0, 9);
+		test1.genList = new LinkedList<FenwickRandomGraphGenerator>();
+		test1.genList.add(gen);
 		test1.start();
 	}
 }

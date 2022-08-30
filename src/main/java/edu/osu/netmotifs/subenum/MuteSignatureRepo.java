@@ -22,8 +22,6 @@ Original code is created by Saeed Shahrivari
 package edu.osu.netmotifs.subenum;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.concurrent.locks.ReentrantLock;

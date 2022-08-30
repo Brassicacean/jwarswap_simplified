@@ -13,7 +13,9 @@ public class FenwickRandomGraphGenerator {
 	private double factor;
 	private FenwickEdgeGenerator randomEdgeGenerator;
 	
-	
+	public int countEdges() {
+		return this.mEdges;
+	}
 	
 	public FenwickRandomGraphGenerator(int[] srcdegseq, int[] tgtdegseq, double factor) {
 		// Produces a randomized network using WaRSwap algorithm 

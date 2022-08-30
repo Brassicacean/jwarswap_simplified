@@ -1,8 +1,10 @@
 package edu.osu.jwarswap;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Arrays;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -10,63 +12,57 @@ import java.util.ListIterator;
 import java.util.Scanner;
 
 public class Parsing {
+	
+    public static HashMap<Integer, Byte> readColors(String path) throws IOException {
+    	/** 
+    	 * Read the colors from a file that maps vertices to colors. 
+    	 */
+    	HashMap<Integer, Byte> vColorHash = new HashMap<Integer, Byte>();
+    	// Use this HashMap to keep the colors consistent whether numbers or names are used.
+    	HashMap<String, Byte> colors = new HashMap<String, Byte>();
+    	colors.put("TF", (byte) 0);
+    	colors.put("MIR", (byte) 1);
+    	colors.put("GENE", (byte) 2);
+    	colors.put("0", (byte) 0);
+    	colors.put("1", (byte) 1);
+    	colors.put("2", (byte) 2);
 
-	public static LinkedList<int[]> degreeSequences(String graphfile)
+        try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+			String line;
+			while ((line = br.readLine()) != null) {
+			    if (line.isEmpty())
+			        continue;
+			    if (line.startsWith("#")) {
+			        System.out.printf("Skipped a line: [%s]\n", line);
+			        continue;
+			    }
+			    String[] tokens = line.split("\\s+");
+			    if (tokens.length < 2) {
+			        throw new IOException("The input file is malformed!");
+			    }
+			    int vtx = Integer.parseInt(tokens[0]);
+			    if (vColorHash.containsKey(vtx)) {
+			    	throw new RuntimeException(vtx + "is listed in the vertex color file more than once.");
+			    }
+			    byte color = colors.get(tokens[1]);
+			    vColorHash.put(vtx, color);
+			}
+			br.close();
+		} catch (NumberFormatException e) {
+			e.printStackTrace();
+			throw e;
+		}
+        return vColorHash;
+    }
+
+
+	public static LinkedList<int[]> degreeSequences(String graphFile) 
 	throws FileNotFoundException{
-		/** Read the file given by the input string and produce a pair of degree sequences
-		 * interpreting the file as a directed edge list.*/
-		File edgelistFile = new File(graphfile);
-		Scanner edgelistScanner = new Scanner(edgelistFile);
-		// Count the number of connections with each node in them.
-		HashMap <Integer, Integer> srcHashMap = new HashMap <Integer, Integer> ();
-		HashMap <Integer, Integer> tgtHashMap = new HashMap <Integer, Integer> ();
-		while(edgelistScanner.hasNextLine()) {
-			String line = edgelistScanner.nextLine();
-			Scanner lineScanner = new Scanner(line);
-			int src = lineScanner.nextInt();
-			int tgt = lineScanner.nextInt();
-			srcHashMap.put(src, srcHashMap.getOrDefault(src, 0) + 1);
-			tgtHashMap.put(tgt, tgtHashMap.getOrDefault(tgt, 0) + 1);
-			lineScanner.close();
-		}
-		edgelistScanner.close();
-		
-		// Ensure the adjacency matrix is square by completing the HashMaps.
-		for(int src: srcHashMap.keySet()) {
-			tgtHashMap.put(src, tgtHashMap.getOrDefault(src, 0));
-		}
-		for(int tgt: tgtHashMap.keySet()) {
-			srcHashMap.put(tgt, srcHashMap.getOrDefault(tgt, 0));
-		}
-		
-		// Create the degree sequences and put them in the output list.
-		int[][] inout = new int[srcHashMap.size()][2];
-		int i = 0;
-		// List the in- and out-degrees for each vertex.
-		for(int vtx: srcHashMap.keySet()) {
-			inout[i][0] = srcHashMap.get(vtx);
-			inout[i][1] = tgtHashMap.get(vtx);
-			i++;
-		}
-		
-		Arrays.sort(inout, new HierarchicalComparator());
-		LinkedList <int[]> degSeqs = new LinkedList <int[]>();
-		
-		int[] tgtDegSeq = new int[tgtHashMap.size()];
-		int[] srcDegSeq = new int[tgtHashMap.size()];
-//		System.out.println("\ntgthashMap keys");
-		for (i = 0; i < srcHashMap.size(); i++) {
-			srcDegSeq[i] = inout[i][0];
-			tgtDegSeq[i] = inout[i][1];
-		}
-
-		degSeqs.add(tgtDegSeq);
-		degSeqs.add(srcDegSeq);		
-
-		return degSeqs;
+		int[][] edgeList = parseEdgeListFile(graphFile);
+		return Setup.degreeSequences(edgeList);
 	}
-	
-	
+
+
 	public static int[][] parseEdgeListFile(String graphfile)
 			throws FileNotFoundException{
 		File edgelistFile = new File(graphfile);
@@ -75,8 +71,8 @@ public class Parsing {
 		while(edgelistScanner.hasNextLine()) {
 			String line = edgelistScanner.nextLine();
 			Scanner lineScanner = new Scanner(line);
-			nodes.add(Integer.valueOf(lineScanner.findInLine("^\\d+")));
-			nodes.add(Integer.valueOf(lineScanner.findInLine("\\d+$")));
+			nodes.add(lineScanner.nextInt());
+			nodes.add(lineScanner.nextInt());
 			lineScanner.close();
 		}
 		edgelistScanner.close();
@@ -88,8 +84,28 @@ public class Parsing {
 			edgeArr[i][1] = (int) nodesIterator.next();
 		}
 		return edgeArr;
+	}	
+
+
+public static LinkedList<FenwickRandomGraphGenerator> getLayerGeneratorsFromFile(String graphFile, String vColorFile, double factor) 
+		throws IOException{
+	int[][] edgeList = parseEdgeListFile(graphFile);
+	HashMap<Integer, Byte> vColorHash = readColors(vColorFile);
+	LinkedList<FenwickRandomGraphGenerator> genList = Setup.getLayerGenerators(edgeList, vColorHash, factor);
+	return genList;
 	}
-	
+
+
+public static LinkedList<FenwickRandomGraphGenerator> getLayerGeneratorsFromFile(String graphFile, double factor) 
+		throws IOException{
+	LinkedList<int[]> degSeqs = degreeSequences(graphFile);
+	int[] tgtDegSeq = degSeqs.pop();
+	int[] srcDegSeq = degSeqs.pop();
+	FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor);
+	LinkedList<FenwickRandomGraphGenerator> genList = new LinkedList<FenwickRandomGraphGenerator>();
+	genList.add(gen);
+	return genList;
+	}
 }
 
 

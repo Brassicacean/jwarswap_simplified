@@ -1,7 +1,6 @@
 package edu.osu.jwarswap;
 import java.util.Random;
 import java.util.Arrays;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 
 public class FenwickEdgeGenerator {
 	private IntFenwickTree degreeCapacityTree;  // Degree times remaining capacity.

@@ -22,18 +22,15 @@ Original code is created by Saeed Shahrivari
 
 package edu.osu.netmotifs.subenum;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.carrotsearch.hppc.LongLongOpenHashMap;
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.HashMultiset;
 
 /**
