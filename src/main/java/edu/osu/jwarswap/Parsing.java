@@ -55,9 +55,8 @@ public class Parsing {
         return vColorHash;
     }
 
-
 	public static LinkedList<int[]> degreeSequences(String graphFile) 
-	throws FileNotFoundException{
+			throws FileNotFoundException{
 		int[][] edgeList = parseEdgeListFile(graphFile);
 		return Setup.degreeSequences(edgeList);
 	}
@@ -98,34 +97,14 @@ public static LinkedList<FenwickRandomGraphGenerator> getLayerGeneratorsFromFile
 
 public static LinkedList<FenwickRandomGraphGenerator> getLayerGeneratorsFromFile(String graphFile, double factor) 
 		throws IOException{
-	LinkedList<int[]> degSeqs = degreeSequences(graphFile);
+	LinkedList<int[]> degSeqs= degreeSequences(graphFile);
+	int[] vertexNames = degSeqs.pop();
 	int[] tgtDegSeq = degSeqs.pop();
 	int[] srcDegSeq = degSeqs.pop();
 	FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor);
+	gen.assignNames(vertexNames);
 	LinkedList<FenwickRandomGraphGenerator> genList = new LinkedList<FenwickRandomGraphGenerator>();
 	genList.add(gen);
 	return genList;
-	}
-}
-
-
-class HierarchicalComparator implements Comparator<int[]>{
-	public int compare(int[] pair1, int[] pair2) {
-		/** Comparator for sorting a 2d array in reverse order based on first column in row, then second.*/
-		if (pair1[0] > pair2[0]) {
-			return -1;
-		}
-		else if (pair1[0] < pair2[0]) {
-			return 1;
-		}
-		else if (pair1[1] > pair2[1]) {
-			return -1;
-		}
-		else if (pair1[1] < pair2[1]) {
-			return 1;
-		}
-		else {
-			return 0;
-		}
 	}
 }

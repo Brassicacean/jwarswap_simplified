@@ -57,7 +57,7 @@ public class IntFenwickTree {
 	}
 
 	public int search(int s) {
-		/** Magical method by David Eisenstat to find the index of the first
+		/** Magical method by David Eisenstat (I think) to find the index of the first
 		 * index in the array represented by a Fenwick tree where the sum of
 		 * the elements up to it is less than s.
 		*/
@@ -74,8 +74,8 @@ public class IntFenwickTree {
 			// If the sum is too small, 
 			if (offset + level < tree.length) {
 				if (s > tree[offset + level]) {
-				s -= tree[offset + level];
-				offset += level;
+					s -= tree[offset + level];
+					offset += level;
 				}
 			}
 			level >>= 1;

@@ -12,26 +12,32 @@ public class FenwickRandomGraphGenerator {
 	private IntFenwickTree srcDegTree;
 	private double factor;
 	private FenwickEdgeGenerator randomEdgeGenerator;
+	private int[] vertexNames = null;
 	
 	public int countEdges() {
 		return this.mEdges;
 	}
 	
+	public void assignNames(int[] names) {
+		/** 
+		 * Provide a list of integers to use as the names of the vertices.
+		 * The order of the names should be the same as the order of the verices'
+		 * respective degrees in the input degree sequences.
+		 */
+		this.vertexNames = names;
+	}
+	
 	public FenwickRandomGraphGenerator(int[] srcdegseq, int[] tgtdegseq, double factor) {
-		// Produces a randomized network using WaRSwap algorithm 
-		// Inputs: A degree sequence is all that should be needed.
-		// Outputs: An edge-list. It shouldn't need to be more complicated than that.
+		/** Produces a randomized network using WaRSwap algorithm 
+		 * Inputs: A degree sequence is all that should be needed.
+		 * Outputs: An edge-list. It shouldn't need to be more complicated than that.
+		*/ 
 		this.srcDegSeq = Arrays.copyOf(srcdegseq, srcdegseq.length);
+		this.tgtDegSeq = Arrays.copyOf(tgtdegseq, tgtdegseq.length);
+		this.factor = factor;
 
 		// Fenwick tree to easily get sums.
 		this.srcDegTree = new IntFenwickTree(srcDegSeq);
-		
-		this.tgtDegSeq = Arrays.copyOf(tgtdegseq, tgtdegseq.length);
-		this.factor = factor;
-		
-		// Make a generator for random vertex-vertex connections (edges). This is kept modular
-		// because there may be multiple ways to do it. I have two in mind with different
-		// situational efficiency.
 
 		// Establish the number of edges
 		int m1 = 0;
@@ -108,6 +114,16 @@ public class FenwickRandomGraphGenerator {
 		// By now, targets should be full of valid target IDs.
 	}
 	
+	private void renameVertices(int[][] edgeArr) {
+		/**
+		 *  Rename the vertices in the edge-list to match the input names.
+		 */
+		for (int i = 0; i < edgeArr.length; i++) {
+			edgeArr[i][0] = this.vertexNames[edgeArr[i][0]];
+			edgeArr[i][1] = this.vertexNames[edgeArr[i][1]];
+		}
+	}
+	
 	public int[][] generate() {
 		// Generate a random graph using the WaRSwap algorithm.
 		boolean success = true;
@@ -130,15 +146,14 @@ public class FenwickRandomGraphGenerator {
 						edgeArr[edgeNum + j][0] = srcVtx;
 						edgeArr[edgeNum + j][1] = targets[j];
 					}
-					
 					// Now advance to the next appropriate starting position.
 					edgeNum += srcDeg;
 				}
+				renameVertices(edgeArr);  // Recover the original vertex names.
 				return edgeArr;
 			} catch (IllegalStateException e) {
 				throw e;
 			}
 		} while(success == false);
-		
 	}
 }

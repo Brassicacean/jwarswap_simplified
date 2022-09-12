@@ -104,11 +104,12 @@ public class Main {
 		}
 	}
 	private static void printGraphInfo(String graphFile) {
-		int[] tgtDegSeq = null, srcDegSeq = null;
+		int[] srcDegSeq = null, tgtDegSeq = null;
 		try {
-			LinkedList <int[]> degSeqs = Parsing.degreeSequences(graphfile);
-			tgtDegSeq = degSeqs.pop();
+			LinkedList<int[]> degSeqs = Parsing.degreeSequences(graphfile);
 			srcDegSeq = degSeqs.pop();
+			tgtDegSeq = degSeqs.pop();
+//			degSeqs.pop();  // Discard the names. 
 		} catch (FileNotFoundException e) {
 			System.err.println("File not found: " + graphfile);
 			System.exit(1);

@@ -30,9 +30,11 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	
 	public void prepareGenerators(int[][] edgeList, double factor) {
 		LinkedList<int[]> degSeqs = Setup.degreeSequences(edgeList);
-		int[] tgtDegSeq = degSeqs.pop();
 		int[] srcDegSeq = degSeqs.pop();
+		int[] tgtDegSeq = degSeqs.pop();
+		int[] vertexNames = degSeqs.pop();
 		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor);
+		gen.assignNames(vertexNames);
 		LinkedList<FenwickRandomGraphGenerator> genList = new LinkedList<FenwickRandomGraphGenerator>();
 		genList.add(gen);
 		this.genList = genList;
