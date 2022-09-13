@@ -82,9 +82,14 @@ public class FenwickRandomGraphGenerator {
 				int swapSrcDeg = this.srcDegSeq[swapSrcVtx];
 				
 				// Check if it is already connected to the chosen target.
+				boolean continue_flag = false;
 				for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
-					if (edgeArr[i][1] == tgtVtx) continue;
+					if (edgeArr[i][1] == tgtVtx) {
+						continue_flag=true;
+						break;
+					}
 				}
+				if (continue_flag) continue;
 				
 				// Make an iterator of swappable target indices in the edge list.
 				IntArrayList tgtList = new IntArrayList();
