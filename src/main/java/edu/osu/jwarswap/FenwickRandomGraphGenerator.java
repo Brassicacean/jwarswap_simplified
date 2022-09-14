@@ -54,6 +54,7 @@ public class FenwickRandomGraphGenerator {
 	}
 	
 	private void swapEdges(int[][]edgeArr, int[] targets, int srcVtx, FenwickEdgeGenerator randomEdgeGenerator){
+		System.out.println("Swapping");
 		// A list of all the sources chosen before srcVtx.
 		int[] possibleVtx = new int[srcVtx]; 
 		for (int i = 0; i < srcVtx; i++) possibleVtx[i] = i;

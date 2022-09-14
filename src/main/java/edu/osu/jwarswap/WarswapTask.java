@@ -148,7 +148,7 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	public static void main(String[] args) {
 		int[] tDegSeq = {7,6,6,5,5,5,4,3,2};
 		int[] sDegSeq = {7,6,6,5,5,5,3,3,3};
-		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(sDegSeq, tDegSeq, 6.0);
+		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(sDegSeq, tDegSeq, 6.0, 0.0);
 		WarswapTask test1 = new WarswapTask("/home/zachary/test_warswap_fenwick_trees", 0, 9);
 		test1.genList = new LinkedList<FenwickRandomGraphGenerator>();
 		test1.genList.add(gen);

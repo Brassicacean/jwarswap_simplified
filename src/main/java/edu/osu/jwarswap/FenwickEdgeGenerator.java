@@ -93,10 +93,12 @@ public class FenwickEdgeGenerator {
 		/** Selects a random target using Bayati et al's weight formula. */
 		int maxCap = this.capacityTree.getSumTo(this.nVertices - 1);
 		double K = srcDeg / (this.factor1 * this.mEdges);  // Linear coefficient
-		double L = srcDeg * srcDeg / (this.factor2 * this.mEdges);  // Quadratic coefficient
+		double L = srcDeg * srcDeg * this.factor2;  // Quadratic coefficient
+		if (L > 0) System.out.println(L);
 		double r = this.random.nextDouble();
 		double maxWeight = (double) maxCap -
-				K * (double) this.degreeCapacityTree.getSumTo(this.nVertices - 1);
+				K * (double) this.degreeCapacityTree.getSumTo(this.nVertices - 1) +
+				L * (double) this.degreeDegreeCapacityTree.getSumTo(this.nVertices - 1);
 		double sum = r * maxWeight; // TODO: Is this numerically stable?
 		return this.doubleSearch(sum, K, L);
 	}
@@ -106,9 +108,10 @@ public class FenwickEdgeGenerator {
 		int target = this.selectTarget(srcDeg);
 		// Update the capacity of the target.
 		int tgtDeg = this.degrees[target];
-		int capacity = this.capacityTree.getValueOf(target);
-		this.capacityTree.update(target, capacity - 1);
-		this.degreeCapacityTree.update(target, tgtDeg * (capacity - 1));
+		int capacity = this.capacityTree.getValueOf(target) - 1;
+		this.capacityTree.update(target, capacity);
+		this.degreeCapacityTree.update(target, tgtDeg * capacity);
+		this.degreeDegreeCapacityTree.update(target, tgtDeg * capacity * capacity);
 		return target;
 	}
 	
@@ -119,12 +122,14 @@ public class FenwickEdgeGenerator {
 		* much swapping is needed.
 		*/
 		// If self-loops aren't allowed, set probability of self-connection to 0.
-		int sameDeg = 0, sameDegCap = 0;
+		int sameDeg = 0, sameDegCap = 0, sameDegDegCap = 0;
 		if (! selfLoops) {
 			sameDeg = this.capacityTree.getValueOf(srcVtx);
 			this.capacityTree.update(srcVtx, 0);
 			sameDegCap = this.capacityTree.getValueOf(srcVtx);
 			this.degreeCapacityTree.update(srcVtx, 0);
+			sameDegDegCap = this.capacityTree.getValueOf(srcVtx);
+			this.degreeDegreeCapacityTree.update(srcVtx, 0);
 		}
 		int[] targets = new int[srcDeg + 1];
 		int[] capacities = new int[srcDeg];
@@ -142,6 +147,7 @@ public class FenwickEdgeGenerator {
 				capacities[i] = tgtCap;
 				this.capacityTree.update(target, 0);
 				this.degreeCapacityTree.update(target, 0);
+				this.degreeDegreeCapacityTree.update(target, 0);
 				room -= tgtCap;
 			}
 		}
@@ -150,10 +156,12 @@ public class FenwickEdgeGenerator {
 		for (int i = 0; i < srcDeg - targets[srcDeg]; i++) {
 			this.capacityTree.update(targets[i], capacities[i]);
 			this.degreeCapacityTree.update(targets[i], capacities[i] * this.degrees[targets[i]]);
+			this.degreeDegreeCapacityTree.update(targets[i], capacities[i] * this.degrees[targets[i]] * this.degrees[targets[i]]);
 		}
 		if (! selfLoops) {
 			this.capacityTree.update(srcVtx, sameDeg);
 			this.degreeCapacityTree.update(srcVtx, sameDegCap);
+			this.degreeDegreeCapacityTree.update(srcVtx, sameDegDegCap);
 		}
 		return targets;
 	}
