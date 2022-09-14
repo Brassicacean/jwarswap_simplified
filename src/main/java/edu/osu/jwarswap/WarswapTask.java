@@ -24,16 +24,16 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	private LinkedList<FenwickRandomGraphGenerator> genList;
 	private HashMap <Long, LinkedList <Long>> subgraphCounts = new HashMap <Long, LinkedList <Long>>();
 	
-	public void prepareGenerators(int[][] edgeList, HashMap<Integer, Byte> vColorHash, double factor) {
-		this.genList = Setup.getLayerGenerators(edgeList, vColorHash, factor);
+	public void prepareGenerators(int[][] edgeList, HashMap<Integer, Byte> vColorHash, double factor1, double factor2) {
+		this.genList = Setup.getLayerGenerators(edgeList, vColorHash, factor1, factor2);
 	}
 	
-	public void prepareGenerators(int[][] edgeList, double factor) {
+	public void prepareGenerators(int[][] edgeList, double factor1, double factor2) {
 		LinkedList<int[]> degSeqs = Setup.degreeSequences(edgeList);
 		int[] srcDegSeq = degSeqs.pop();
 		int[] tgtDegSeq = degSeqs.pop();
 		int[] vertexNames = degSeqs.pop();
-		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor);
+		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor1, factor2);
 		gen.assignNames(vertexNames);
 		LinkedList<FenwickRandomGraphGenerator> genList = new LinkedList<FenwickRandomGraphGenerator>();
 		genList.add(gen);

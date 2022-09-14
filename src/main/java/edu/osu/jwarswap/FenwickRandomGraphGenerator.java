@@ -10,7 +10,8 @@ public class FenwickRandomGraphGenerator {
 	private int[] srcDegSeq;
 	private int[] tgtDegSeq;
 	private IntFenwickTree srcDegTree;
-	private double factor;
+	private double factor1;
+	private double factor2;
 	private FenwickEdgeGenerator randomEdgeGenerator;
 	private int[] vertexNames = null;
 	
@@ -27,14 +28,15 @@ public class FenwickRandomGraphGenerator {
 		this.vertexNames = names;
 	}
 	
-	public FenwickRandomGraphGenerator(int[] srcdegseq, int[] tgtdegseq, double factor) {
+	public FenwickRandomGraphGenerator(int[] srcdegseq, int[] tgtdegseq, double factor1, double factor2) {
 		/** Produces a randomized network using WaRSwap algorithm 
 		 * Inputs: A degree sequence is all that should be needed.
 		 * Outputs: An edge-list. It shouldn't need to be more complicated than that.
 		*/ 
 		this.srcDegSeq = Arrays.copyOf(srcdegseq, srcdegseq.length);
 		this.tgtDegSeq = Arrays.copyOf(tgtdegseq, tgtdegseq.length);
-		this.factor = factor;
+		this.factor1 = factor1;
+		this.factor2 = factor2;
 
 		// Fenwick tree to easily get sums.
 		this.srcDegTree = new IntFenwickTree(srcDegSeq);
@@ -85,7 +87,7 @@ public class FenwickRandomGraphGenerator {
 				boolean continue_flag = false;
 				for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
 					if (edgeArr[i][1] == tgtVtx) {
-						continue_flag=true;
+						continue_flag = true;
 						break;
 					}
 				}
@@ -136,7 +138,7 @@ public class FenwickRandomGraphGenerator {
 		do {
 			edgeArr = new int[this.mEdges][2];
 			try {
-				randomEdgeGenerator = new FenwickEdgeGenerator(this.tgtDegSeq, factor);
+				randomEdgeGenerator = new FenwickEdgeGenerator(this.tgtDegSeq, factor1, factor2);
 				int edgeNum = 0;  // Keep track of where we're at.
 				for (int srcVtx = 0; srcVtx < this.srcDegSeq.length; srcVtx++) {
 					int srcDeg = this.srcDegSeq[srcVtx];

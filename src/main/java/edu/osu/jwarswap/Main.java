@@ -22,17 +22,19 @@ public class Main {
 	private static String graphfile = null;
 	private static String randOutdir = null;
 	private static int ngraphs = 0;
-	private static double factor = 0;
+	private static double factor1 = 0;
+	private static double factor2 = 0;
 	private static int threads = 1	;
 	private static String vertexFile = null;
 	private static boolean enumerate = true;
 	
 	private final static String helpMessage = 
-			"java -jar jwarswap.jar [Options] graphfile rand-outdir ngraphs factor\n" +
+			"java -jar jwarswap.jar [Options] graphfile rand-outdir ngraphs factor1 factor2\n" +
 			"graphfile: A two-column edge-list separated by tabs.\n" +
 			"rand-outdir: A directory to put randomized output graphs into.\n"+
 			"ngraphs: Number of random graphs to generate.\n" +
-			"factor: The correction factor to use for weighted edge selection.\n" +
+			"factor1: The linear correction factor1 to use for weighted edge selection.\n" +
+			"factor2: The quadratic correction factor1 to use for weighted edge selection.\n" +
 			"Options:\n" + 
 			"\t--threads THREADS, -t THREADS: Use THREADS threads.\n" +
 			"\t--vertex-file VERTEX_FILE, -v VERTEX_FILE: Use the file, VERTEX_FILE, to provide the colors of the vertices.\n" +
@@ -47,8 +49,8 @@ public class Main {
 		
 //		int[][] edgeArray = Parsing.parseEdgeListFile(graphfile);
 //		HashMap<Integer, Byte> vColorHash = Parsing.readColors(vertexFile);
-//		WarswapTask.prepareGenerators(edgeArray, vColorHash, factor);
-		WarswapTask[] tasks = runWarswap(graphfile, vertexFile, randOutdir, ngraphs, factor, threads);
+//		WarswapTask.prepareGenerators(edgeArray, vColorHash, factor1);
+		WarswapTask[] tasks = runWarswap(graphfile, vertexFile, randOutdir, ngraphs, factor1, factor2, threads);
 		if (enumerate) getResults(tasks, motifsOutfile, graphfile);
 		System.out.println("All done!");
 		System.exit(0);
@@ -90,15 +92,16 @@ public class Main {
 					case 0: graphfile = args[i]; break;
 					case 1: randOutdir = args[i]; break;
 					case 2: ngraphs = (int) Integer.valueOf(args[i]); break;
-					case 3: factor = (double) Double.valueOf(args[i]); break;
+					case 3: factor1 = (double) Double.valueOf(args[i]); break;
+					case 4: factor2 = (double) Double.valueOf(args[i]); break;
 				}
 				position++;
 				break;
 			}
 			i++;
 		}
-		if (position != 4) {
-			System.err.println("Four positional arguments are required!");
+		if (position != 5) {
+			System.err.println("Five positional arguments are required.");
 			System.err.println(helpMessage);
 			System.exit(1);
 		}
@@ -121,7 +124,7 @@ public class Main {
 		System.out.println();
 	}
 	
-	private static WarswapTask[] runWarswap(String graphfile, String vertexFile, String rand_outdir, int ngraphs, double factor, int threads) 
+	private static WarswapTask[] runWarswap(String graphfile, String vertexFile, String rand_outdir, int ngraphs, double factor1, double factor2, int threads) 
 			throws FileNotFoundException {
 		/**
 		 * Create a number of threads and send them a fixed number of graphs to make so that ngraphs graphs are made in total. 
@@ -154,9 +157,9 @@ public class Main {
 			// different procedure, because there are different layers that must be created
 			// separately.
 			if (vertexFile != null) {
-				tasks[i].prepareGenerators(edgeList, vColorHash, factor);
+				tasks[i].prepareGenerators(edgeList, vColorHash, factor1, factor2);
 			} else {
-				tasks[i].prepareGenerators(edgeList, factor);
+				tasks[i].prepareGenerators(edgeList, factor1, factor2);
 			}
 			Future<?> f = executor.submit(tasks[i]);
 			futures.add(f);

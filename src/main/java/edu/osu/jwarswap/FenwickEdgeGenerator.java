@@ -3,12 +3,14 @@ import java.util.Random;
 import java.util.Arrays;
 
 public class FenwickEdgeGenerator {
+	private IntFenwickTree degreeDegreeCapacityTree;  // Degree squared times remaining capacity.
 	private IntFenwickTree degreeCapacityTree;  // Degree times remaining capacity.
 	private IntFenwickTree capacityTree;  // Just the capacities.
 	private int[] degrees;
 	private int mEdges;
 	private int nVertices;
-	private double factor;
+	private double factor1;
+	private double factor2;
 	private Random random;
 	
 	private static boolean selfLoops = true;
@@ -17,22 +19,26 @@ public class FenwickEdgeGenerator {
 		selfLoops = loop;
 	}
 	
-	FenwickEdgeGenerator(int[] tgtDegrees, double factor){
+	FenwickEdgeGenerator(int[] tgtDegrees, double factor1, double factor2){
 		this.random = new Random();
 		this.degrees = Arrays.copyOf(tgtDegrees, tgtDegrees.length);
 		this.mEdges = 0;
 		this.nVertices = 0;
-		this.factor = factor;
+		this.factor1 = factor1;
+		this.factor2 = factor2;
 		int[] degreeCapacities = new int[this.degrees.length];  // Initializes as the squares of degrees.
+		int[] degreeDegreeCapacities = new int[this.degrees.length];  // Initializes as the cubess of degrees.
 		for (int i = 0; i < this.degrees.length; i++) {
 			this.nVertices++;
 			int deg = this.degrees[i];
 			this.mEdges += deg;
 			degreeCapacities[i] = deg * deg;
+			degreeDegreeCapacities[i] = deg * deg * deg;
 		}
 		// Initialize the trees that will allow quick sum calculations.
 		this.capacityTree = new IntFenwickTree(this.degrees);
 		this.degreeCapacityTree = new IntFenwickTree(degreeCapacities);
+		this.degreeDegreeCapacityTree = new IntFenwickTree(degreeDegreeCapacities);
 	}
 	
 	public int capacitySumTo(int tgtVtx) {
@@ -48,9 +54,10 @@ public class FenwickEdgeGenerator {
 		/** Update the capacity of tgtVtx to newCap.*/
 		this.capacityTree.update(tgtVtx, newCap);
 		this.degreeCapacityTree.update(tgtVtx, newCap * this.degrees[tgtVtx]);
+		this.degreeDegreeCapacityTree.update(tgtVtx, newCap * this.degrees[tgtVtx] * this.degrees[tgtVtx]);
 	}
 	
-	private int doubleSearch(double sum, double K) {
+	private int doubleSearch(double sum, double K, double L) {
 		 /** K is the constant, sourceDegree/(m * f).
 		 Use the two Fenwick trees to find a target node using appropriate weights.
 		 This is adapted from the algorithm to find the highest index where the sum is
@@ -70,7 +77,8 @@ public class FenwickEdgeGenerator {
 			// Calculate the weight with Bayati et al.'s function.
 			if (offset + level < this.degreeCapacityTree.tree.length) {
 				double weight = (double) this.capacityTree.tree[offset + level] -
-						K * (double) this.degreeCapacityTree.tree[offset + level];
+						K * (double) this.degreeCapacityTree.tree[offset + level] +
+						L * (double) this.degreeDegreeCapacityTree.tree[offset + level];
 				if (sum > weight) {
 					sum -= weight;  // TODO: Is this numerically stable?
 					offset += level;
@@ -84,12 +92,13 @@ public class FenwickEdgeGenerator {
 	public int selectTarget(int srcDeg) {
 		/** Selects a random target using Bayati et al's weight formula. */
 		int maxCap = this.capacityTree.getSumTo(this.nVertices - 1);
-		double K = srcDeg / (this.factor * this.mEdges);
+		double K = srcDeg / (this.factor1 * this.mEdges);  // Linear coefficient
+		double L = srcDeg * srcDeg / (this.factor2 * this.mEdges);  // Quadratic coefficient
 		double r = this.random.nextDouble();
 		double maxWeight = (double) maxCap -
 				K * (double) this.degreeCapacityTree.getSumTo(this.nVertices - 1);
 		double sum = r * maxWeight; // TODO: Is this numerically stable?
-		return this.doubleSearch(sum, K);
+		return this.doubleSearch(sum, K, L);
 	}
 	
 	public int formEdge(int srcDeg) {
