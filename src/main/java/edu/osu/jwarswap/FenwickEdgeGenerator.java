@@ -94,7 +94,7 @@ public class FenwickEdgeGenerator {
 		int maxCap = this.capacityTree.getSumTo(this.nVertices - 1);
 		double K = srcDeg / (this.factor1 * this.mEdges);  // Linear coefficient
 		double L = srcDeg * srcDeg * this.factor2;  // Quadratic coefficient
-		if (L > 0) System.out.println(L);
+//		if (L > 0) System.out.println(L);
 		double r = this.random.nextDouble();
 		double maxWeight = (double) maxCap -
 				K * (double) this.degreeCapacityTree.getSumTo(this.nVertices - 1) +

@@ -77,7 +77,14 @@ public class FenwickRandomGraphGenerator {
 			// Try to fill the target until it's full or all edges are selected.
 			while (tgtCap > 0 && targets[targets.length - 1] > 0) {
 				// Choose a random source vertex that hasn't been chosen yet.
-				int swapSrcVtx = srcIterator.nextInt();
+				int swapSrcVtx = 0;
+				try {
+					swapSrcVtx = srcIterator.nextInt();
+				} catch (Exception e) {
+					System.err.println(srcIterator.hasNext());
+					System.err.println(srcList.size());
+					//throw e;
+				}
 				// The first edge in the edge list that uses sourceVtx.
 				// The edge list generator is designed so that all edges with the same source are
 				// next to each other.
@@ -134,7 +141,7 @@ public class FenwickRandomGraphGenerator {
 	
 	public int[][] generate() {
 		// Generate a random graph using the WaRSwap algorithm.
-		boolean success = true;
+		boolean success = false;
 		int[][] edgeArr;
 		do {
 			edgeArr = new int[this.mEdges][2];

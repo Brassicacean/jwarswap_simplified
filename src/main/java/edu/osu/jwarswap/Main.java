@@ -106,6 +106,29 @@ public class Main {
 			System.exit(1);
 		}
 	}
+	
+	private static boolean checkWeights(String graphfile, double factor1, double factor2) {
+		int[] srcDegSeq = null, tgtDegSeq = null;
+		try {
+			LinkedList<int[]> degSeqs = Parsing.degreeSequences(graphfile);
+			srcDegSeq = degSeqs.pop();
+			tgtDegSeq = degSeqs.pop();
+//			degSeqs.pop();  // Discard the names. 
+		} catch (FileNotFoundException e) {
+			System.err.println("File not found: " + graphfile);
+			System.exit(1);
+		}
+		int m = 0;
+		for (int i: srcDegSeq) m += i;
+		double K = 1 / (factor1 * m);
+		for (int i: srcDegSeq) {
+			for(int j: tgtDegSeq) {
+				if (1.0 - (double) (i * j) * K + (double) (i * i * j * j) * factor2 < 0.0) return true;
+			}
+		}
+		return false;
+	}
+	
 	private static void printGraphInfo(String graphFile) {
 		int[] srcDegSeq = null, tgtDegSeq = null;
 		try {
@@ -131,6 +154,10 @@ public class Main {
 		 * If vertexFile is given, use it during motif discovery.
 		 */
 		printGraphInfo(graphfile);
+		if (checkWeights(graphfile, factor1, factor2)) {
+			System.out.println("Invalid factors: There is a source-target pair with a negative sampling weight.");
+			System.exit(1);
+		}
 		// Set up the vertex colors.
 		HashMap<Integer, Byte> vColorHash = null;
 		if (vertexFile != null) {
