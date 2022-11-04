@@ -1,6 +1,7 @@
 package edu.osu.jwarswap;
 import java.util.Arrays;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIterator;
 import java.util.Collections;
@@ -22,7 +23,7 @@ public class FenwickRandomGraphGenerator {
 	public void assignNames(int[] names) {
 		/** 
 		 * Provide a list of integers to use as the names of the vertices.
-		 * The order of the names should be the same as the order of the verices'
+		 * The order of the names should be the same as the order of the vertices'
 		 * respective degrees in the input degree sequences.
 		 */
 		this.vertexNames = names;
@@ -54,13 +55,9 @@ public class FenwickRandomGraphGenerator {
 	}
 	
 	private void swapEdges(int[][]edgeArr, int[] targets, int srcVtx, FenwickEdgeGenerator randomEdgeGenerator){
-		System.out.println("Swapping");
-		// A list of all the sources chosen before srcVtx.
-		int[] possibleVtx = new int[srcVtx]; 
-		for (int i = 0; i < srcVtx; i++) possibleVtx[i] = i;
 		// Get the targets that are already in the array and put them in a set.
 		IntOpenHashSet targetsSet = new IntOpenHashSet(Arrays.copyOfRange(targets, 0, targets.length - 2 - targets[targets.length - 1]));
-
+		Int2IntOpenHashMap targetCapacities = new Int2IntOpenHashMap();
 		// The last element is a counter for unfilled edge slots. While there is an unused edge slot, keep trying to fill it.
 		while (targets[targets.length - 1] > 0) {
 			// Choose one of the unsaturated targets at random.
@@ -74,40 +71,41 @@ public class FenwickRandomGraphGenerator {
 			for (int idx = 0; idx < srcVtx; idx++) srcList.add(idx);
 			Collections.shuffle(srcList);
 			IntIterator srcIterator = srcList.intIterator();
-			// Try to fill the target until it's full or all edges are selected.
-			while (tgtCap > 0 && targets[targets.length - 1] > 0) {
+			// Try to form a connection to another source using the target.
+			boolean found = false;
+			SRC_LOOP: while (srcIterator.hasNext() && found == false) {
 				// Choose a random source vertex that hasn't been chosen yet.
-				int swapSrcVtx = 0;
+				int swapSrcVtx = -1;  // arbitrary placeholder
 				try {
 					swapSrcVtx = srcIterator.nextInt();
 				} catch (Exception e) {
 					System.err.println(srcIterator.hasNext());
 					System.err.println(srcList.size());
-					//throw e;
+					throw e;
 				}
-				// The first edge in the edge list that uses sourceVtx.
+				// The first edge in the edge list that uses swapSrcVtx.
 				// The edge list generator is designed so that all edges with the same source are
 				// next to each other.
 				int edgeListStart = this.srcDegTree.getSumTo(swapSrcVtx - 1);
 				int swapSrcDeg = this.srcDegSeq[swapSrcVtx];
 				
-				// Check if it is already connected to the chosen target.
-				boolean continue_flag = false;
+				// Check if the source is already connected to the chosen target.
 				for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
 					if (edgeArr[i][1] == tgtVtx) {
-						continue_flag = true;
-						break;
+						continue SRC_LOOP;
 					}
 				}
-				if (continue_flag) continue;
 				
-				// Make an iterator of swappable target indices in the edge list.
+				// Make an iterator of swap-able target indices in the edge list.
 				IntArrayList tgtList = new IntArrayList();
-				for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) tgtList.add(edgeArr[i][1]);
+				for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
+					// Don't try to swap if the swap-source already contains tgtVtx
+					if (tgtVtx == edgeArr[i][1]) continue SRC_LOOP;
+					else tgtList.add(i);
+				}
 				Collections.shuffle(tgtList);
 				IntIterator tgtIterator = tgtList.intIterator();
-				// Search randomly for a legal target to swap, then make the swap.
-				// Continue until a swap is made or there are none left to try.
+				// Search randomly for a legal target to swap, then make the swap if possible.
 				while (tgtIterator.hasNext()) {
 					int swapTgtIdx = tgtIterator.nextInt(); // Row in the edge-list.
 					int swapTgtVtx = edgeArr[swapTgtIdx][1];
@@ -121,12 +119,17 @@ public class FenwickRandomGraphGenerator {
 						randomEdgeGenerator.capacityOf(tgtVtx, tgtCap);
 						// Decrement the counter for unfilled edges.
 						targets[targets.length - 1]--;
+						found = true;
 						break;
 					}
 				}
 			}
 		}
-		// By now, targets should be full of valid target IDs.
+		// By now, `targets` should be full of valid target IDs.
+		// Restore the used targets' capacities.	
+		for (int key: targetCapacities.keySet()) {
+			randomEdgeGenerator.capacityOf(key, targetCapacities.get(key));
+		}
 	}
 	
 	private void renameVertices(int[][] edgeArr) {
@@ -141,7 +144,7 @@ public class FenwickRandomGraphGenerator {
 	
 	public int[][] generate() {
 		// Generate a random graph using the WaRSwap algorithm.
-		boolean success = false;
+		boolean success = true;
 		int[][] edgeArr;
 		do {
 			edgeArr = new int[this.mEdges][2];

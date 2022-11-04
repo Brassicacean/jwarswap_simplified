@@ -99,7 +99,7 @@ public class FenwickEdgeGenerator {
 		double maxWeight = (double) maxCap -
 				K * (double) this.degreeCapacityTree.getSumTo(this.nVertices - 1) +
 				L * (double) this.degreeDegreeCapacityTree.getSumTo(this.nVertices - 1);
-		double sum = r * maxWeight; // TODO: Is this numerically stable?
+		double sum = r * maxWeight; // TODO: Is this numerically stable? Do I even know what that means in this context?
 		return this.doubleSearch(sum, K, L);
 	}
 	
