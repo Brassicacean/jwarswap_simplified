@@ -55,82 +55,59 @@ public class FenwickRandomGraphGenerator {
 	}
 	
 	private void swapEdges(int[][]edgeArr, int[] targets, int srcVtx, FenwickEdgeGenerator randomEdgeGenerator){
-		// Get the targets that are already in the array and put them in a set.
-		IntOpenHashSet targetsSet = new IntOpenHashSet(Arrays.copyOfRange(targets, 0, targets.length - 2 - targets[targets.length - 1]));
-		Int2IntOpenHashMap targetCapacities = new Int2IntOpenHashMap();
-		// The last element is a counter for unfilled edge slots. While there is an unused edge slot, keep trying to fill it.
-		while (targets[targets.length - 1] > 0) {
-			// Choose one of the unsaturated targets at random.
-			// This method will only select an unsaturated target and won't update
-			// capacities.
-			int tgtVtx = randomEdgeGenerator.selectTarget(this.srcDegSeq[srcVtx]);
-			int tgtCap = randomEdgeGenerator.capacityOf(tgtVtx);
-			if (tgtCap == 0) throw new IllegalStateException("Chose a full target for swapping: " + tgtVtx);  // This should be impossible.
-			// From the sources already filled, make a list from which one can be chosen at random.
-			IntArrayList srcList = new IntArrayList();
-			for (int idx = 0; idx < srcVtx; idx++) srcList.add(idx);
-			Collections.shuffle(srcList);
-			IntIterator srcIterator = srcList.intIterator();
-			// Try to form a connection to another source using the target.
-			boolean found = false;
-			SRC_LOOP: while (srcIterator.hasNext() && found == false) {
-				// Choose a random source vertex that hasn't been chosen yet.
-				int swapSrcVtx = -1;  // arbitrary placeholder
-				try {
-					swapSrcVtx = srcIterator.nextInt();
-				} catch (Exception e) {
-					System.err.println(srcIterator.hasNext());
-					System.err.println(srcList.size());
-					throw e;
-				}
-				// The first edge in the edge list that uses swapSrcVtx.
-				// The edge list generator is designed so that all edges with the same source are
-				// next to each other.
-				int edgeListStart = this.srcDegTree.getSumTo(swapSrcVtx - 1);
-				int swapSrcDeg = this.srcDegSeq[swapSrcVtx];
-				
-				// Check if the source is already connected to the chosen target.
-				for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
-					if (edgeArr[i][1] == tgtVtx) {
-						continue SRC_LOOP;
-					}
-				}
-				
-				// Make an iterator of swap-able target indices in the edge list.
-				IntArrayList tgtList = new IntArrayList();
-				for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
-					// Don't try to swap if the swap-source already contains tgtVtx
-					if (tgtVtx == edgeArr[i][1]) continue SRC_LOOP;
-					else tgtList.add(i);
-				}
-				Collections.shuffle(tgtList);
-				IntIterator tgtIterator = tgtList.intIterator();
-				// Search randomly for a legal target to swap, then make the swap if possible.
-				while (tgtIterator.hasNext()) {
-					int swapTgtIdx = tgtIterator.nextInt(); // Row in the edge-list.
-					int swapTgtVtx = edgeArr[swapTgtIdx][1];
-					if (! targetsSet.contains(swapTgtVtx)) {
-						edgeArr[swapTgtIdx][1] = tgtVtx;
-						// Put the swapped target in the targets list at the first unfilled spot.
-						targets[targets.length - targets[targets.length - 1] - 1] = swapTgtVtx;
-						targetsSet.add(swapTgtVtx);  // Register that this target is now connected to srcVtx
-						tgtCap--;
-						// Update capacity of target.
-						randomEdgeGenerator.capacityOf(tgtVtx, tgtCap);
-						// Decrement the counter for unfilled edges.
-						targets[targets.length - 1]--;
-						found = true;
-						break;
-					}
+		// 0. Make a set of the targets already in srcVtx.
+		int finalPos = targets.length - 2 - targets[targets.length - 1];  // last position that has a target.
+		IntOpenHashSet targetsSet = new IntOpenHashSet(Arrays.copyOfRange(targets, 0, finalPos + 1));
+		// 1. Choose a full source
+		IntArrayList srcList = new IntArrayList();
+		for (int idx = 0; idx < srcVtx; idx++) srcList.add(idx);
+		Collections.shuffle(srcList);
+		IntIterator srcIterator = srcList.intIterator();
+		while (srcIterator.hasNext() && targets[targets.length - 1] > 0) {
+			int swapSrcVtx = srcIterator.nextInt();
+			int edgeListStart = this.srcDegTree.getSumTo(swapSrcVtx - 1);
+			int swapSrcDeg = this.srcDegSeq[swapSrcVtx];
+			
+			// Find a target that is not already connected to srcVtx.
+			
+			// 3. Set the capacities of all the targets attached to the full source to 0.
+			// Need to save the capacities for later.
+			Int2IntOpenHashMap tgtCapacities = new Int2IntOpenHashMap();
+			for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
+				tgtCapacities.put(edgeArr[i][1], randomEdgeGenerator.capacityOf(edgeArr[i][1]));
+				randomEdgeGenerator.capacityOf(edgeArr[i][1], 0);
+			}
+
+			// 2. Find one target attached to that source that isn't shared with srcVtx.
+			// If a target can't be chosen, go back to 1.
+			for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
+				if (targetsSet.contains(edgeArr[i][1])) continue;  // This target cannot be swapped out.
+				if (randomEdgeGenerator.capacitySum() < 1) break;  // There are no allowable targets to swap into swapSrcVtx.
+				if (targets[targets.length - 1] == 0) break;  // srcVtx is already full. 
+
+				// 4. Choose a random weighted target.
+				int tgtVtx = randomEdgeGenerator.selectTarget(swapSrcDeg);
+				// 5. Give the new target to the full source and give the current target to srcVtx.
+				targets[finalPos + 1] = edgeArr[i][1];
+				randomEdgeGenerator.capacityOf(edgeArr[i][1], tgtCapacities.get(edgeArr[i][1]));
+				edgeArr[i][1] = tgtVtx;
+				tgtCapacities.addTo(tgtVtx, -1);  // We're forming an edge, so we have to reduce the capacity accordingly.
+				finalPos++; targets[targets.length - 1]--;
+				// Also need to prevent it from being chosen again.
+				targetsSet.add(targets[finalPos]);
+				tgtCapacities.put(edgeArr[i][1], randomEdgeGenerator.capacityOf(edgeArr[i][1]));
+				randomEdgeGenerator.capacityOf(edgeArr[i][1], 0);
+			}
+			// 6. Restore all capacities, then subtract one from the selected target.
+			for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
+					randomEdgeGenerator.capacityOf(edgeArr[i][1], tgtCapacities.get(edgeArr[i][1]));
 				}
 			}
+			if (targets[targets.length - 1] > 0) {
+				System.err.println(srcVtx + " was not filled during back-swapping. Remaining capacity: " + targets[targets.length - 1]);
+			}
 		}
-		// By now, `targets` should be full of valid target IDs.
-		// Restore the used targets' capacities.	
-		for (int key: targetCapacities.keySet()) {
-			randomEdgeGenerator.capacityOf(key, targetCapacities.get(key));
-		}
-	}
+
 	
 	private void renameVertices(int[][] edgeArr) {
 		/**

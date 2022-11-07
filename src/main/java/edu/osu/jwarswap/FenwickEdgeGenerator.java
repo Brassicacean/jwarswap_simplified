@@ -41,6 +41,10 @@ public class FenwickEdgeGenerator {
 		this.degreeDegreeCapacityTree = new IntFenwickTree(degreeDegreeCapacities);
 	}
 	
+	public int capacitySum() {
+		return this.capacityTree.getSumTo(nVertices - 1);
+	}
+	
 	public int capacitySumTo(int tgtVtx) {
 		return this.capacityTree.getSumTo(tgtVtx);
 	}
@@ -59,12 +63,12 @@ public class FenwickEdgeGenerator {
 	
 	private int doubleSearch(double sum, double K, double L) {
 		 /** K is the constant, sourceDegree/(m * f).
-		 Use the two Fenwick trees to find a target node using appropriate weights.
+		 Use the three Fenwick trees to find a target node using appropriate weights.
 		 This is adapted from the algorithm to find the highest index where the sum is
-		 less than sum. */
+		 less than `sum`. */
 			
 		// This should work because we are searching a non-existent tree which is a linear
-		// combination of degreeTree and capacityTree, which represent positive arrays,
+		// combination of degreeTree, capacityTree, and capacityTree squared, which represent positive arrays,
 		// and we have chosen k such that weightTree[i] = capacity[i] * (1 - k * degree[i])
 		// is always positive.
 		int level = 1;
@@ -75,7 +79,7 @@ public class FenwickEdgeGenerator {
 		int offset = 0;
 		while (level > 0) {
 			// Calculate the weight with Bayati et al.'s function.
-			if (offset + level < this.degreeCapacityTree.tree.length) {
+			if (offset + level < this.degreeCapacityTree.tree.length - 1) {
 				double weight = (double) this.capacityTree.tree[offset + level] -
 						K * (double) this.degreeCapacityTree.tree[offset + level] +
 						L * (double) this.degreeDegreeCapacityTree.tree[offset + level];
