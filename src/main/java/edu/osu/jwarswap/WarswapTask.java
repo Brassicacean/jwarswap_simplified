@@ -23,6 +23,7 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	private static boolean enumerate = true;
 	private LinkedList<FenwickRandomGraphGenerator> genList;
 	private HashMap <Long, LinkedList <Long>> subgraphCounts = new HashMap <Long, LinkedList <Long>>();
+	private int swapCounter = 0;
 	
 	public void prepareGenerators(int[][] edgeList, HashMap<Integer, Byte> vColorHash, double factor1, double factor2) {
 		this.genList = Setup.getLayerGenerators(edgeList, vColorHash, factor1, factor2);
@@ -64,6 +65,10 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 
 	public HashMap <Long, LinkedList <Long>> getSubgraphCounts(){
 		return subgraphCounts;
+	}
+	
+	public int getSwapCount() {
+		return this.swapCounter;
 	}
 	
 	public static LongLongOpenHashMap getSubgraphs(int[][] edgeArr) {
@@ -125,7 +130,10 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	        		subgraphCounts.get(key).add(subgraphs.get(key));
 	            }
 		    }
-		}	
+		}
+		for (FenwickRandomGraphGenerator gen: genList) {
+			swapCounter += gen.getSwapCount();
+		}
 	}
 	
 	

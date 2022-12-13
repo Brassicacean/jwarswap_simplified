@@ -15,9 +15,14 @@ public class FenwickRandomGraphGenerator {
 	private double factor2;
 	private FenwickEdgeGenerator randomEdgeGenerator;
 	private int[] vertexNames = null;
-	
+	private int swapCounter = 0;
+
 	public int countEdges() {
 		return this.mEdges;
+	}
+	
+	public int getSwapCount() {
+		return this.swapCounter;
 	}
 	
 	public void assignNames(int[] names) {
@@ -55,8 +60,8 @@ public class FenwickRandomGraphGenerator {
 	}
 	
 	private void swapEdges(int[][]edgeArr, int[] targets, int srcVtx, FenwickEdgeGenerator randomEdgeGenerator){
-		// 0. Make a set of the targets already in srcVtx.
 		int finalPos = targets.length - 2 - targets[targets.length - 1];  // last position that has a target.
+		// 0. Make a set of the targets already in srcVtx.
 		IntOpenHashSet targetsSet = new IntOpenHashSet(Arrays.copyOfRange(targets, 0, finalPos + 1));
 		// 1. Choose a full source
 		IntArrayList srcList = new IntArrayList();
@@ -70,7 +75,7 @@ public class FenwickRandomGraphGenerator {
 			
 			// Find a target that is not already connected to srcVtx.
 			
-			// 3. Set the capacities of all the targets attached to the full source to 0.
+			// 2. Set the capacities of all the targets attached to the full source to 0.
 			// Need to save the capacities for later.
 			Int2IntOpenHashMap tgtCapacities = new Int2IntOpenHashMap();
 			for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
@@ -78,7 +83,7 @@ public class FenwickRandomGraphGenerator {
 				randomEdgeGenerator.capacityOf(edgeArr[i][1], 0);
 			}
 
-			// 2. Find one target attached to that source that isn't shared with srcVtx.
+			// 3. Find one target attached to that source that isn't shared with srcVtx.
 			// If a target can't be chosen, go back to 1.
 			for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
 				if (targetsSet.contains(edgeArr[i][1])) continue;  // This target cannot be swapped out.
@@ -88,25 +93,25 @@ public class FenwickRandomGraphGenerator {
 				// 4. Choose a random weighted target.
 				int tgtVtx = randomEdgeGenerator.selectTarget(swapSrcDeg);
 				// 5. Give the new target to the full source and give the current target to srcVtx.
-				targets[finalPos + 1] = edgeArr[i][1];
-				randomEdgeGenerator.capacityOf(edgeArr[i][1], tgtCapacities.get(edgeArr[i][1]));
-				edgeArr[i][1] = tgtVtx;
-				tgtCapacities.addTo(tgtVtx, -1);  // We're forming an edge, so we have to reduce the capacity accordingly.
-				finalPos++; targets[targets.length - 1]--;
+				targets[finalPos + 1] = edgeArr[i][1];  // Give this to srcVtx.
+				// We're forming an edge, so we have to reduce the capacity accordingly.
+				tgtCapacities.put(tgtVtx, randomEdgeGenerator.capacityOf(tgtVtx) - 1);
+				randomEdgeGenerator.capacityOf(tgtVtx, 0);  // Prevent it from being selected again for swapSrcVtx
+				edgeArr[i][1] = tgtVtx;  // Give tgtVtx to swapSrcVtx in exchange.
+				finalPos++; targets[targets.length - 1]--;  // Update srcVtx fill level.
 				// Also need to prevent it from being chosen again.
 				targetsSet.add(targets[finalPos]);
-				tgtCapacities.put(edgeArr[i][1], randomEdgeGenerator.capacityOf(edgeArr[i][1]));
-				randomEdgeGenerator.capacityOf(edgeArr[i][1], 0);
 			}
 			// 6. Restore all capacities, then subtract one from the selected target.
-			for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
-					randomEdgeGenerator.capacityOf(edgeArr[i][1], tgtCapacities.get(edgeArr[i][1]));
-				}
-			}
-			if (targets[targets.length - 1] > 0) {
-				System.err.println(srcVtx + " was not filled during back-swapping. Remaining capacity: " + targets[targets.length - 1]);
+			//for (int i = edgeListStart; i < edgeListStart + swapSrcDeg; i++) {
+			for (int tgt: tgtCapacities.keySet()) {
+				randomEdgeGenerator.capacityOf(tgt, tgtCapacities.get(tgt));
 			}
 		}
+		if (targets[targets.length - 1] > 0) {
+			System.err.println(srcVtx + " was not filled during back-swapping. Remaining capacity: " + targets[targets.length - 1]);
+		}
+	}
 
 	
 	private void renameVertices(int[][] edgeArr) {
@@ -134,6 +139,7 @@ public class FenwickRandomGraphGenerator {
 					int[] targets = this.randomEdgeGenerator.fillSrcVtx(srcVtx, srcDeg);
 					// If swaps have to be made, detect it and make swaps.
 					if (targets[srcDeg] > 0) {
+						this.swapCounter += targets[srcDeg];
 						swapEdges(edgeArr, targets, srcVtx, randomEdgeGenerator);
 					}
 					// Add the new edges to the edge list.

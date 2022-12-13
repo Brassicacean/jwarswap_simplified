@@ -94,7 +94,7 @@ public class FenwickEdgeGenerator {
 	}
 
 	public int selectTarget(int srcDeg) {
-		/** Selects a random target using Bayati et al's weight formula. */
+		/** Selects a random target using Bayati et al's weight formula modified by ZAB. */
 		int maxCap = this.capacityTree.getSumTo(this.nVertices - 1);
 		double K = srcDeg / (this.factor1 * this.mEdges);  // Linear coefficient
 		double L = srcDeg * srcDeg * this.factor2;  // Quadratic coefficient

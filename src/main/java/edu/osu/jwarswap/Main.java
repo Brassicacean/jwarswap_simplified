@@ -52,6 +52,7 @@ public class Main {
 //		WarswapTask.prepareGenerators(edgeArray, vColorHash, factor1);
 		WarswapTask[] tasks = runWarswap(graphfile, vertexFile, randOutdir, ngraphs, factor1, factor2, threads);
 		if (enumerate) getResults(tasks, motifsOutfile, graphfile);
+		System.out.println(getSwaps(tasks) + " swaps were made");
 		System.out.println("All done!");
 		System.exit(0);
 	}
@@ -201,6 +202,15 @@ public class Main {
 				System.exit(1);
 			}
 		return tasks;
+	}
+	
+	
+	private static int getSwaps(WarswapTask[] tasks) {
+		int swaps = 0;
+		for (WarswapTask task: tasks) {
+			swaps += task.getSwapCount();
+		}
+		return swaps;
 	}
 	
 	
