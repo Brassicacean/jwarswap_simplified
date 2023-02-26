@@ -84,12 +84,13 @@ public class FenwickEdgeGenerator {
 						K * (double) this.degreeCapacityTree.tree[offset + level] +
 						L * (double) this.degreeDegreeCapacityTree.tree[offset + level];
 				if (sum > weight) {
-					sum -= weight;  // TODO: Is this numerically stable?
+					sum -= weight;
 					offset += level;
 				}
 			}
 			level >>= 1;
 		}
+		if (offset == 0) System.err.println("Offset of zero occured.");
 		return offset;
 	}
 

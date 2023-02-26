@@ -21,9 +21,12 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	private int start, end;
 	private static int motifSize = 3;
 	private static boolean enumerate = true;
+	private static boolean saveGraphs = true;
+	private static boolean entropy = false;
 	private LinkedList<FenwickRandomGraphGenerator> genList;
 	private HashMap <Long, LinkedList <Long>> subgraphCounts = new HashMap <Long, LinkedList <Long>>();
 	private int swapCounter = 0;
+	private int[][] averageMatrix;
 	
 	public void prepareGenerators(int[][] edgeList, HashMap<Integer, Byte> vColorHash, double factor1, double factor2) {
 		this.genList = Setup.getLayerGenerators(edgeList, vColorHash, factor1, factor2);
@@ -47,6 +50,14 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	
 	public static void setEnumerate(boolean bool) {
 		enumerate = bool;
+	}
+	
+	public static void setSaveGraphs(boolean bool) {
+		saveGraphs = bool;
+	}
+	
+	public static void setEntropy(boolean bool) {
+		entropy = true;
 	}
 	
 	public static int getMotifSize() {
@@ -106,19 +117,23 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 				}
 				cursor += edgeArr.length;
 			}
-			
+			if (entropy) {
+				//TODO: Make it work!
+			}
+			if (saveGraphs) {
 			String filepath = rand_outdir + "/" + "randgraph." + job + ".tsv";
-		    try {
-			    BufferedWriter writer = new BufferedWriter(new FileWriter(filepath));
-		    	// Write the edge-list as a tsv.
-		    	for (int row = 0; row < finalEdgeArr.length; row++) {
-		    		writer.write(finalEdgeArr[row][0] + "\t" + finalEdgeArr[row][1] + "\n");
-		    	}
-		    	writer.close();
-		    } catch (IOException e) {
-				System.err.println("Error occurred while creating file " + filepath);
-//				e.printStackTrace();
-				System.exit(1);
+			    try {
+				    BufferedWriter writer = new BufferedWriter(new FileWriter(filepath));
+			    	// Write the edge-list as a tsv.
+			    	for (int row = 0; row < finalEdgeArr.length; row++) {
+			    		writer.write(finalEdgeArr[row][0] + "\t" + finalEdgeArr[row][1] + "\n");
+			    	}
+			    	writer.close();
+			    } catch (IOException e) {
+					System.err.println("Error occurred while creating file " + filepath);
+	//				e.printStackTrace();
+					System.exit(1);
+				}
 			}
 		    // Enumerate subgraphs in edgeArr and add the counts to subgraphCounts in the appropriate locations.
 		    if (enumerate) {

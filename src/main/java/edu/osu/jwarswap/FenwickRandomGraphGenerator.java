@@ -150,7 +150,7 @@ public class FenwickRandomGraphGenerator {
 					// Now advance to the next appropriate starting position.
 					edgeNum += srcDeg;
 				}
-				renameVertices(edgeArr);  // Recover the original vertex names.
+				//renameVertices(edgeArr);  // Recover the original vertex names.
 				return edgeArr;
 			} catch (IllegalStateException e) {
 				throw e;

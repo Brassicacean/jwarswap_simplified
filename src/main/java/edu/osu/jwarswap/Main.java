@@ -27,6 +27,7 @@ public class Main {
 	private static int threads = 1	;
 	private static String vertexFile = null;
 	private static boolean enumerate = true;
+	private static boolean entropy = false;
 	
 	private final static String helpMessage = 
 			"java -jar jwarswap.jar [Options] graphfile rand-outdir ngraphs factor1 factor2\n" +
@@ -42,7 +43,8 @@ public class Main {
 			"\t--no-motifs, -n: Don't enumarate subgraphs to find motifs.\n" + 
 			"\t--motif-size SIZE, -s SIZE: Enumerate motifs of size SIZE. Don't use a size greater than 5.\n" +
 			"\t--motif-outfile FILE, -o FILE: Write motif discovery results to FILE." +
-			"\t--no-self-loops: Don't allow self-loops during graph randomization.";
+			"\t--no-self-loops: Don't allow self-loops during graph randomization." +
+			"\t--entropy: Only compute the sample entropy, don't save any graphs.";
 	private static String motifsOutfile = null;
 	public static void main(String[] args) throws IOException {
 		parseArguments(args);
@@ -56,6 +58,7 @@ public class Main {
 		System.out.println("All done!");
 		System.exit(0);
 	}
+	
 	
 	private static void parseArguments(String[] args) {
 		int position = 0;
@@ -87,6 +90,11 @@ public class Main {
 			case "--motif-outfile": case "-o":
 				i++;
 				motifsOutfile = args[i];
+				break;
+			case "--entropy": 
+				entropy = true;
+				WarswapTask.setSaveGraphs(false);  //TODO: Consider making this part of an independent option.
+				WarswapTask.setEntropy(true);
 				break;
 			default:  // Read positional arguments.
 				switch (position) {
@@ -120,11 +128,11 @@ public class Main {
 			System.exit(1);
 		}
 		int m = 0;
-		for (int i: srcDegSeq) m += i;
-		double K = 1 / (factor1 * m);
-		for (int i: srcDegSeq) {
-			for(int j: tgtDegSeq) {
-				if (1.0 - (double) (i * j) * K + (double) (i * i * j * j) * factor2 < 0.0) return true;
+		for (int deg1: srcDegSeq) m += deg1;
+		double K = 1.0 / (factor1 * (double) m);
+		for (int deg1: srcDegSeq) {
+			for(int deg2: tgtDegSeq) {
+				if (1.0 - ((double) deg1 * deg2) * K + ((double) deg1 * deg1 * deg2 * deg2) * factor2 < 0.0) return true;
 			}
 		}
 		return false;

@@ -100,7 +100,9 @@ public class Setup {
 			inout[i][0] = srcHashMap.get(vtx);
 			inout[i][1] = tgtHashMap.get(vtx);
 			inout[i][2] = vtx;
+			System.out.println(inout[i][0] + "\t" + inout[i][1] + "\t" + inout[i][2]);
 			i++;
+
 		}
 		
 		// Sort the degree sequence in reverse order where in-degree trumps out-degree.
