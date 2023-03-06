@@ -11,8 +11,7 @@ public class FenwickRandomGraphGenerator {
 	private int[] srcDegSeq;
 	private int[] tgtDegSeq;
 	private IntFenwickTree srcDegTree;
-	private double factor1;
-	private double factor2;
+	private double[] coefficients;
 	private FenwickEdgeGenerator randomEdgeGenerator;
 	private int[] vertexNames = null;
 	private int swapCounter = 0;
@@ -34,15 +33,14 @@ public class FenwickRandomGraphGenerator {
 		this.vertexNames = names;
 	}
 	
-	public FenwickRandomGraphGenerator(int[] srcdegseq, int[] tgtdegseq, double factor1, double factor2) {
+	public FenwickRandomGraphGenerator(int[] srcdegseq, int[] tgtdegseq, double[] coefficients) {
 		/** Produces a randomized network using WaRSwap algorithm 
 		 * Inputs: A degree sequence is all that should be needed.
 		 * Outputs: An edge-list. It shouldn't need to be more complicated than that.
 		*/ 
 		this.srcDegSeq = Arrays.copyOf(srcdegseq, srcdegseq.length);
 		this.tgtDegSeq = Arrays.copyOf(tgtdegseq, tgtdegseq.length);
-		this.factor1 = factor1;
-		this.factor2 = factor2;
+		this.coefficients = coefficients;
 
 		// Fenwick tree to easily get sums.
 		this.srcDegTree = new IntFenwickTree(srcDegSeq);
@@ -65,6 +63,14 @@ public class FenwickRandomGraphGenerator {
 		IntOpenHashSet targetsSet = new IntOpenHashSet(Arrays.copyOfRange(targets, 0, finalPos + 1));
 		// 1. Choose a full source
 		IntArrayList srcList = new IntArrayList();
+		System.out.println("Swapping edges for " + srcVtx + ".");
+		System.out.println("Unmatched stubs: " + targets[targets.length - 1]);
+		System.out.println("Stubs available for swapping:" + randomEdgeGenerator.capacitySum());
+		if (randomEdgeGenerator.capacitySum() < 1) {
+			System.out.print("Capacities: ");
+			for (int tgt: randomEdgeGenerator.capacities()) System.out.print(tgt + " ");
+			System.out.println();
+		}
 		for (int idx = 0; idx < srcVtx; idx++) srcList.add(idx);
 		Collections.shuffle(srcList);
 		IntIterator srcIterator = srcList.intIterator();
@@ -126,35 +132,37 @@ public class FenwickRandomGraphGenerator {
 	
 	public int[][] generate() {
 		// Generate a random graph using the WaRSwap algorithm.
-		boolean success = true;
+		boolean success = false;
 		int[][] edgeArr;
 		do {
+			success = true;  // If this doesn't get flipped back to false, everything should be fine.
 			edgeArr = new int[this.mEdges][2];
-			try {
-				randomEdgeGenerator = new FenwickEdgeGenerator(this.tgtDegSeq, factor1, factor2);
-				int edgeNum = 0;  // Keep track of where we're at.
-				for (int srcVtx = 0; srcVtx < this.srcDegSeq.length; srcVtx++) {
-					int srcDeg = this.srcDegSeq[srcVtx];
-					// Make a small edge list that contains connections to the current source.
-					int[] targets = this.randomEdgeGenerator.fillSrcVtx(srcVtx, srcDeg);
-					// If swaps have to be made, detect it and make swaps.
-					if (targets[srcDeg] > 0) {
-						this.swapCounter += targets[srcDeg];
-						swapEdges(edgeArr, targets, srcVtx, randomEdgeGenerator);
-					}
-					// Add the new edges to the edge list.
-					for (int j = 0; j < srcDeg; j++) {
-						edgeArr[edgeNum + j][0] = srcVtx;
-						edgeArr[edgeNum + j][1] = targets[j];
-					}
-					// Now advance to the next appropriate starting position.
-					edgeNum += srcDeg;
+			randomEdgeGenerator = new FenwickEdgeGenerator(this.tgtDegSeq, coefficients);
+			int edgeNum = 0;  // Keep track of where we're at.
+			for (int srcVtx = 0; srcVtx < this.srcDegSeq.length; srcVtx++) {
+				int srcDeg = this.srcDegSeq[srcVtx];
+				// Make a small edge list that contains connections to the current source.
+				int[] targets = this.randomEdgeGenerator.fillSrcVtx(srcVtx, srcDeg);
+				System.out.print("Targets: ");
+				for (int tgt: targets) System.out.print(tgt + " ");
+				System.out.println();
+				// If swaps have to be made, detect it and make swaps.
+				if (targets[srcDeg] > 0) {
+					this.swapCounter += targets[srcDeg];
+					swapEdges(edgeArr, targets, srcVtx, randomEdgeGenerator);
+					//success=false;
 				}
-				//renameVertices(edgeArr);  // Recover the original vertex names.
-				return edgeArr;
-			} catch (IllegalStateException e) {
-				throw e;
+				// Add the new edges to the edge list.
+				for (int j = 0; j < srcDeg; j++) {
+					edgeArr[edgeNum + j][0] = srcVtx;
+					edgeArr[edgeNum + j][1] = targets[j];
+				}
+				// Now advance to the next appropriate starting position.
+				edgeNum += srcDeg;
 			}
+			//renameVertices(edgeArr);  // Recover the original vertex names.
+			return edgeArr;
+
 		} while(success == false);
 	}
 }

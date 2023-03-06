@@ -26,18 +26,18 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	private LinkedList<FenwickRandomGraphGenerator> genList;
 	private HashMap <Long, LinkedList <Long>> subgraphCounts = new HashMap <Long, LinkedList <Long>>();
 	private int swapCounter = 0;
-	private int[][] averageMatrix;
+	private int[][] averageMatrix;  // TODO: Compute this when entropy==true.
 	
-	public void prepareGenerators(int[][] edgeList, HashMap<Integer, Byte> vColorHash, double factor1, double factor2) {
-		this.genList = Setup.getLayerGenerators(edgeList, vColorHash, factor1, factor2);
+	public void prepareGenerators(int[][] edgeList, HashMap<Integer, Byte> vColorHash, double[] coefficients) {
+		this.genList = Setup.getLayerGenerators(edgeList, vColorHash, coefficients);
 	}
 	
-	public void prepareGenerators(int[][] edgeList, double factor1, double factor2) {
+	public void prepareGenerators(int[][] edgeList, double[] coefficients) {
 		LinkedList<int[]> degSeqs = Setup.degreeSequences(edgeList);
 		int[] srcDegSeq = degSeqs.pop();
 		int[] tgtDegSeq = degSeqs.pop();
 		int[] vertexNames = degSeqs.pop();
-		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor1, factor2);
+		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, coefficients);
 		gen.assignNames(vertexNames);
 		LinkedList<FenwickRandomGraphGenerator> genList = new LinkedList<FenwickRandomGraphGenerator>();
 		genList.add(gen);
@@ -171,7 +171,8 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	public static void main(String[] args) {
 		int[] tDegSeq = {7,6,6,5,5,5,4,3,2};
 		int[] sDegSeq = {7,6,6,5,5,5,3,3,3};
-		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(sDegSeq, tDegSeq, 6.0, 0.0);
+		double[] coefs = {0.00387596899225, 0.0};
+		FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(sDegSeq, tDegSeq, coefs);
 		WarswapTask test1 = new WarswapTask("/home/zachary/test_warswap_fenwick_trees", 0, 9);
 		test1.genList = new LinkedList<FenwickRandomGraphGenerator>();
 		test1.genList.add(gen);

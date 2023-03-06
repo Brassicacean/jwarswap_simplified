@@ -86,22 +86,22 @@ public class Parsing {
 	}	
 
 
-public static LinkedList<FenwickRandomGraphGenerator> getLayerGeneratorsFromFile(String graphFile, String vColorFile, double factor1, double factor2) 
+public static LinkedList<FenwickRandomGraphGenerator> getLayerGeneratorsFromFile(String graphFile, String vColorFile, double[] coefficients) 
 		throws IOException{
 	int[][] edgeList = parseEdgeListFile(graphFile);
 	HashMap<Integer, Byte> vColorHash = readColors(vColorFile);
-	LinkedList<FenwickRandomGraphGenerator> genList = Setup.getLayerGenerators(edgeList, vColorHash, factor1, factor2);
+	LinkedList<FenwickRandomGraphGenerator> genList = Setup.getLayerGenerators(edgeList, vColorHash, coefficients);
 	return genList;
 	}
 
 
-public static LinkedList<FenwickRandomGraphGenerator> getLayerGeneratorsFromFile(String graphFile, double factor1, double factor2) 
+public static LinkedList<FenwickRandomGraphGenerator> getLayerGeneratorsFromFile(String graphFile, double[] coefficients) 
 		throws IOException{
 	LinkedList<int[]> degSeqs= degreeSequences(graphFile);
 	int[] vertexNames = degSeqs.pop();
 	int[] tgtDegSeq = degSeqs.pop();
 	int[] srcDegSeq = degSeqs.pop();
-	FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, factor1, factor2);
+	FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(srcDegSeq, tgtDegSeq, coefficients);
 	gen.assignNames(vertexNames);
 	LinkedList<FenwickRandomGraphGenerator> genList = new LinkedList<FenwickRandomGraphGenerator>();
 	genList.add(gen);

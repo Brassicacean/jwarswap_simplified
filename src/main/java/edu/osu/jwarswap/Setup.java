@@ -125,7 +125,7 @@ public class Setup {
 	
 	
 	public static LinkedList<FenwickRandomGraphGenerator> getLayerGenerators(
-			int[][] edgeList, HashMap<Integer, Byte> vColorHash, double factor1, double factor2) {
+			int[][] edgeList, HashMap<Integer, Byte> vColorHash, double[] coefficients) {
 		/**
 		 * Create and return a list of FenwickRandomGraphGenerators corresponding to each graph layer.
 		 */
@@ -143,7 +143,7 @@ public class Setup {
 				}
 				LinkedList<int[]> degSeqs = degreeSequences(subGraphEdgeArray);
 				int[] vertexNames = degSeqs.pop(), tgtDegSeq = degSeqs.pop(), srcDegSeq = degSeqs.pop();
-				FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(tgtDegSeq, srcDegSeq, factor1, factor2);
+				FenwickRandomGraphGenerator gen = new FenwickRandomGraphGenerator(tgtDegSeq, srcDegSeq, coefficients);
 				gen.assignNames(vertexNames);
 				genList.add(gen);
 			}
