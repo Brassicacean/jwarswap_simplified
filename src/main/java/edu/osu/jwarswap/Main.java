@@ -31,12 +31,11 @@ public class Main {
 	private static boolean entropy = false;
 	
 	private final static String helpMessage = 
-			"java -jar jwarswap.jar [Options] graphfile rand-outdir ngraphs factor1 factor2\n" +
+			"java -jar jwarswap.jar [Options] graphfile rand-outdir ngraphs factor1 factor2... factorN\n" +
 			"graphfile: A two-column edge-list separated by tabs.\n" +
 			"rand-outdir: A directory to put randomized output graphs into.\n"+
 			"ngraphs: Number of random graphs to generate.\n" +
-			"factor1: The linear correction factor1 to use for weighted edge selection.\n" +
-			"factor2: The quadratic correction factor1 to use for weighted edge selection.\n" +
+			"factor1..N: The factors to use for weighted edge selection.\n" +
 			"Options:\n" + 
 			"\t--threads THREADS, -t THREADS: Use THREADS threads.\n" +
 			"\t--vertex-file VERTEX_FILE, -v VERTEX_FILE: Use the file, VERTEX_FILE, to provide the colors of the vertices.\n" +
@@ -157,11 +156,11 @@ public class Main {
 			System.err.println("File not found: " + graphfile);
 			System.exit(1);
 		}
-		System.out.println("Degree sequences:");
-		for (int deg: srcDegSeq) System.out.print(deg + " ");
-		System.out.println();
-		for (int deg: tgtDegSeq) System.out.print(deg + " ");
-		System.out.println();
+		//System.out.println("Degree sequences:");
+		//for (int deg: srcDegSeq) System.out.print(deg + " ");
+		//System.out.println();
+		//for (int deg: tgtDegSeq) System.out.print(deg + " ");
+		//System.out.println();
 	}
 	
 	private static WarswapTask[] runWarswap(String graphfile, String vertexFile, String rand_outdir, int ngraphs, double[] coefficients, int threads) 

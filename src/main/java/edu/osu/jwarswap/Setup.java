@@ -100,7 +100,7 @@ public class Setup {
 			inout[i][0] = srcHashMap.get(vtx);
 			inout[i][1] = tgtHashMap.get(vtx);
 			inout[i][2] = vtx;
-			System.out.println(inout[i][0] + "\t" + inout[i][1] + "\t" + inout[i][2]);
+			//System.out.println(inout[i][0] + "\t" + inout[i][1] + "\t" + inout[i][2]);
 			i++;
 
 		}
