@@ -63,14 +63,14 @@ public class FenwickRandomGraphGenerator {
 		IntOpenHashSet targetsSet = new IntOpenHashSet(Arrays.copyOfRange(targets, 0, finalPos + 1));
 		// 1. Choose a full source
 		IntArrayList srcList = new IntArrayList();
-		System.out.println("Swapping edges for " + srcVtx + ".");
-		System.out.println("Unmatched stubs: " + targets[targets.length - 1]);
-		System.out.println("Stubs available for swapping:" + randomEdgeGenerator.capacitySum());
-		if (randomEdgeGenerator.capacitySum() < 1) {
-			System.out.print("Capacities: ");
-			for (int tgt: randomEdgeGenerator.capacities()) System.out.print(tgt + " ");
-			System.out.println();
-		}
+//		System.out.println("Swapping edges for " + srcVtx + ".");
+//		System.out.println("Unmatched stubs: " + targets[targets.length - 1]);
+//		System.out.println("Stubs available for swapping:" + randomEdgeGenerator.capacitySum());
+//		if (randomEdgeGenerator.capacitySum() < 1) {
+//			System.out.print("Capacities: ");
+//			for (int tgt: randomEdgeGenerator.capacities()) System.out.print(tgt + " ");
+//			System.out.println();
+//		}
 		for (int idx = 0; idx < srcVtx; idx++) srcList.add(idx);
 		Collections.shuffle(srcList);
 		IntIterator srcIterator = srcList.intIterator();
@@ -143,9 +143,9 @@ public class FenwickRandomGraphGenerator {
 				int srcDeg = this.srcDegSeq[srcVtx];
 				// Make a small edge list that contains connections to the current source.
 				int[] targets = this.randomEdgeGenerator.fillSrcVtx(srcVtx, srcDeg);
-				System.out.print("Targets: ");
-				for (int tgt: targets) System.out.print(tgt + " ");
-				System.out.println();
+				//System.out.print("Targets: ");
+				//for (int tgt: targets) System.out.print(tgt + " ");
+				//System.out.println();
 				// If swaps have to be made, detect it and make swaps.
 				if (targets[srcDeg] > 0) {
 					this.swapCounter += targets[srcDeg];

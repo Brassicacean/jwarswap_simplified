@@ -49,9 +49,6 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		parseArguments(args);
 		
-//		int[][] edgeArray = Parsing.parseEdgeListFile(graphfile);
-//		HashMap<Integer, Byte> vColorHash = Parsing.readColors(vertexFile);
-//		WarswapTask.prepareGenerators(edgeArray, vColorHash, factor1);
 		WarswapTask[] tasks = runWarswap(graphfile, vertexFile, randOutdir, ngraphs, coefficients, threads);
 		if (enumerate) getResults(tasks, motifsOutfile, graphfile);
 		System.out.println(getSwaps(tasks) + " swaps were made");

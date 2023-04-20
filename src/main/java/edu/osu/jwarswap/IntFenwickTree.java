@@ -42,6 +42,7 @@ public class IntFenwickTree {
 	}
 	
 	public int getValueOf(int target) {
+        /** Return the value (not the sum) of target */
 		return this.arr[target];
 	}
 	

@@ -34,23 +34,11 @@ public class FenwickEdgeGenerator {
 				int deg = this.degrees[j];
 				this.mEdges += deg;
 				degreePowerCapacities[j] = deg * (int) Math.pow(deg, i + 1);
-//				System.out.print(degreePowerCapacities[j] + ",");
 			}
 			this.degreePowerTrees[i] = new IntFenwickTree(degreePowerCapacities);
-//			System.out.println();
 		}
 		// Initialize the trees that will allow quick sum calculations.
 		this.capacityTree = new IntFenwickTree(this.degrees);
-//		System.out.print("degrees: ");
-//		for (int i = 0; i < this.degrees.length; i++) {
-//			System.out.print(this.degrees[i] + " ");
-//		}
-//		System.out.println();
-//		System.out.print("capacityTree: ");
-		for (int i = 0; i < this.degrees.length; i++) {
-//			System.out.print(this.capacityOf(i) + " ");
-		}
-//		System.out.println();
 	}
 	
 	public int[] capacities() {
@@ -60,10 +48,12 @@ public class FenwickEdgeGenerator {
 	}
 	
 	public int capacitySum() {
+        /** Get the sum of all capacities */
 		return this.capacityTree.getSumTo(nVertices - 1);
 	}
 	
 	public int capacitySumTo(int tgtVtx) {
+        /** Get the sum of capacities up to and including tgtVtx */
 		return this.capacityTree.getSumTo(tgtVtx);
 	}
 	
@@ -76,25 +66,25 @@ public class FenwickEdgeGenerator {
 		/**
 		 * Update the capacity of tgtVtx to newCap, and update the other trees accordingly.
 		*/
-//		System.out.println("Updating target " + tgtVtx);
 		this.capacityTree.update(tgtVtx, newCap);
-//		System.out.println("\tCapacity: " + newCap);
 		for (int i = 0; i < this.degreePowerTrees.length; i++) {
 			degreePowerTrees[i].update(tgtVtx, newCap * (int) Math.pow(this.degrees[tgtVtx], i + 1));
-//			System.out.println("\tDegree " + (i + 1) + " weight: " + newCap * (int) Math.pow(this.degrees[tgtVtx], i + 1));
 		}
 	}
 
 	
 	private double cumulativeWeight(int srcDeg, int index) {
+        /** Return the cumulative weights of targets up to index, given
+        * srcDeg. Depends on the current capacities of each target up to index.
+        */
 		// TODO: I think this is right, but it should be tested carefully
+        // The only likely problem is with float precision.
 		double weight = this.capacitySumTo(index);
 		for (int i = 0; i < this.degreePowerTrees.length; i++) {
 			weight += this.coefficients[i] * 
 					Math.pow(srcDeg, i + 1) * 
 					(double) this.degreePowerTrees[i].getSumTo(index);
 		}
-		//System.out.println("Weight: " + weight + " Index: " + index);
 		return weight;
 	}
 	
@@ -105,12 +95,12 @@ public class FenwickEdgeGenerator {
 		 This is adapted from the algorithm to find the highest index where the sum is
 		 less than `sum`. */
 			
-		// This should work because we are searching a non-existent tree which is a linear
-		// combination of degreeTree, capacityTree, and capacityTree squared, which represent positive arrays,
-		// and we have chosen k such that weightTree[i] = capacity[i] * (1 - k * degree[i])
-		// is always positive.
-//		System.out.println("Double search with sum " + sum);
+		// This works because we are searching a non-existent tree which is a linear
+		// combination of the computed trees wihch represent the components of the 
+        // weighing function, and we have chosen coefficients such that all the trees 
+        // have strictly non-negative values.
 		int offset = 1;
+        int[] values = new int[this.coefficients.length + 1];
 		while (offset < this.capacityTree.tree.length) {
 			offset <<= 1;
 		}
@@ -119,30 +109,28 @@ public class FenwickEdgeGenerator {
 		while (offset > 0) {
 			// Calculate the weight with Bayati et al.'s function.
 			if (level + offset < this.capacityTree.tree.length - 1) {
-				//double weight = cumulativeWeight(srcDeg, offset + level);
-				double weight = this.capacityTree.tree[level + offset];
-				for (int i = 0; i < this.degreePowerTrees.length; i++) {
-					for (int j = 0; j < this.degreePowerTrees[i].tree.length; j++) {
-//						System.out.print(this.degreePowerTrees[i].tree[j] + " ");
-					}
-//					System.out.println();
-					weight += (double) this.degreePowerTrees[i].tree[level + offset] *
-							this.coefficients[i] *
-							Math.pow(srcDeg, i + 1);
+				//double weight = this.capacityTree.tree[level + offset];
+                int[] new_values = new int[this.coefficients.length + 1];
+				new_values[0] = this.capacityTree.tree[level + offset];
+				double weight = values[0] + new_values[0];
+                for (int i = 0; i < this.degreePowerTrees.length; i++) {
+                    // Idea: Use a vector of ints, compute floats only for comparison,
+                    // update a vector of cumulative values.  
+					//weight += (double) this.degreePowerTrees[i].tree[level + offset] *
+					//		this.coefficients[i] *
+					//		Math.pow(srcDeg, i + 1);
+                    new_values[i + 1] = this.degreePowerTrees[i].tree[level + offset] * 
+                        (int) Math.pow(srcDeg, i + 1);
+                    weight += this.coefficients[i] * (values[i + 1] + new_values[i + 1]);
 				}
-				System.out.println(weight + " " + sum);
-//				System.out.println("Weight at index " + (offset + level) + ": " + weight);
 				if (sum > weight) {
-					sum -= weight;
+					//sum -= weight;
+                    // Update
+                    for (int i = 0; i < values.length; i++) values[i] += new_values[i];
 					level += offset;
 				}
 			}
 			offset >>= 1;
-		}
-		if (this.capacityOf(level) < 1) {
-			System.out.println("Warning: " + level + " chosen by doubleSearch has capacity " + this.capacityOf(level));
-			for (int tgt: this.capacityTree.arr) System.out.print(tgt + " ");
-			System.out.println();
 		}
 		return level;
 	}
@@ -150,23 +138,27 @@ public class FenwickEdgeGenerator {
 	
 	public int selectTarget(int srcDeg) {
 		/** Selects a random target using Bayati et al's weight formula modified by ZAB. */
-		if (this.capacitySum() < 1) {
-			System.out.println("Warning: trying to select an edge with total capacity " + this.capacitySum());
-		}
+		//if (this.capacitySum() < 1) {
+		//	System.out.println("Warning: trying to select an edge with total capacity " + this.capacitySum());
+		//}
 		double r = this.random.nextDouble();
 		double maxWeight = this.cumulativeWeight(srcDeg, this.nVertices - 1);
-		System.out.println("maxWeight: " + maxWeight);
+		//System.out.println("maxWeight: " + maxWeight);
 		double sum = r * maxWeight; // TODO: Is this numerically stable? Do I even know what that means in this context?
-		System.out.println("sum: " + sum);
+		//System.out.println("sum: " + sum);
 		return this.doubleSearch(sum, srcDeg);
 	}
 	
 	public int formEdge(int srcDeg) {
 		/** Selects a target and updates the capacity to reflect that an edge has been formed. */
-		int target = this.selectTarget(srcDeg);
-		// Update the capacity of the target.
-		int capacity = this.capacityOf(target) - 1;
-		this.capacityOf(target, capacity);
+		int capacity = 0;
+		int target = 0;
+		do {
+			target = this.selectTarget(srcDeg);
+			// Update the capacity of the target.
+			capacity = this.capacityOf(target);
+		} while (capacity < 1);
+		this.capacityOf(target, capacity - 1);
 		return target;
 	}
 	
