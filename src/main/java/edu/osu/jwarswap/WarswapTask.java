@@ -11,22 +11,23 @@ import java.io.IOException;  // Import the IOException class to handle errors
 import java.io.FileWriter;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import com.carrotsearch.hppc.LongLongOpenHashMap;
 
  class WarswapTask implements Runnable{
 	private Thread thread;
 	private String threadname;
-	private String rand_outdir;
+	private String rand_outdir = null;
 	private int start, end;
 	private static int motifSize = 3;
+	private static int edgeSwaps = 0;
 	private static boolean enumerate = true;
-	private static boolean saveGraphs = true;
 	private static boolean entropy = false;
 	private LinkedList<FenwickRandomGraphGenerator> genList;
 	private HashMap <Long, LinkedList <Long>> subgraphCounts = new HashMap <Long, LinkedList <Long>>();
 	private int swapCounter = 0;
-	private int[][] averageMatrix;  // TODO: Compute this when entropy==true.
+	private static ArrayBlockingQueue<int[][]> adj_queue = null;  // TODO: Compute this when entropy==true.
 	
 	public void prepareGenerators(int[][] edgeList, HashMap<Integer, Byte> vColorHash, double[] coefficients) {
 		this.genList = Setup.getLayerGenerators(edgeList, vColorHash, coefficients);
@@ -52,16 +53,20 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 		enumerate = bool;
 	}
 	
-	public static void setSaveGraphs(boolean bool) {
-		saveGraphs = bool;
-	}
-	
 	public static void setEntropy(boolean bool) {
 		entropy = true;
 	}
 	
 	public static int getMotifSize() {
 		return motifSize;
+	}
+	
+	public static void setEdgeSwaps(int _edgeSwaps) {
+		edgeSwaps = _edgeSwaps;
+	}
+	
+	public static void setAdjQueue(ArrayBlockingQueue<int[][]> _adj_queue) {
+		adj_queue = _adj_queue;
 	}
 	
 	
@@ -101,6 +106,34 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	}
 	
 	
+	private void save_graphs(String rand_outdir, int job, int[][] finalEdgeArr) {
+		String filepath = rand_outdir + "/randgraph." + job + ".tsv";
+	    try {
+		    BufferedWriter writer = new BufferedWriter(new FileWriter(filepath));
+	    	// Write the edge-list as a tsv.
+	    	for (int row = 0; row < finalEdgeArr.length; row++) {
+	    		writer.write(finalEdgeArr[row][0] + "\t" + finalEdgeArr[row][1] + "\n");
+	    	}
+	    	writer.close();
+	    } catch (IOException e) {
+			System.err.println("Error occurred while creating file " + filepath);
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+	
+	
+	private void tallySubgraphs(int[][] finalEdgeArr) {
+    	LongLongOpenHashMap subgraphs = getSubgraphs(finalEdgeArr);
+        for (long key: subgraphs.keys) {
+        	if (!subgraphCounts.containsKey(key)) {
+        		subgraphCounts.put(key, new LinkedList<Long>());
+        	}
+    		subgraphCounts.get(key).add(subgraphs.get(key));
+        }
+	}
+	
+	
 	public void run() {
 		int edges = 0;
 		for (FenwickRandomGraphGenerator gen: genList) edges += gen.countEdges();
@@ -117,33 +150,29 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 				}
 				cursor += edgeArr.length;
 			}
+		    if (edgeSwaps > 0) {
+		    	// Switch edges to get better sampling uniformity.
+		    	EdgeSwitcher edgeSwitcher = new EdgeSwitcher(finalEdgeArr);
+		    	edgeSwitcher.switchNEdges(edgeSwaps);
+		    	finalEdgeArr = edgeSwitcher.getEdgeArr();
+		    }
 			if (entropy) {
 				//TODO: Make it work!
 			}
-			if (saveGraphs) {
-			String filepath = rand_outdir + "/" + "randgraph." + job + ".tsv";
-			    try {
-				    BufferedWriter writer = new BufferedWriter(new FileWriter(filepath));
-			    	// Write the edge-list as a tsv.
-			    	for (int row = 0; row < finalEdgeArr.length; row++) {
-			    		writer.write(finalEdgeArr[row][0] + "\t" + finalEdgeArr[row][1] + "\n");
-			    	}
-			    	writer.close();
-			    } catch (IOException e) {
-					System.err.println("Error occurred while creating file " + filepath);
-	//				e.printStackTrace();
-					System.exit(1);
+			if (rand_outdir != null) {
+				save_graphs(rand_outdir, job, finalEdgeArr);
+			}
+			if (adj_queue != null) {
+				// 
+				try {
+					adj_queue.put(finalEdgeArr);
+				} catch (InterruptedException e) {
+					System.err.println("The adjacency tally queue was interrupted. If this was unexpected, please alert the developers.");
 				}
 			}
 		    // Enumerate subgraphs in edgeArr and add the counts to subgraphCounts in the appropriate locations.
 		    if (enumerate) {
-		    	LongLongOpenHashMap subgraphs = getSubgraphs(finalEdgeArr);
-	            for (long key: subgraphs.keys) {
-	            	if (!subgraphCounts.containsKey(key)) {
-	            		subgraphCounts.put(key, new LinkedList<Long>());
-	            	}
-	        		subgraphCounts.get(key).add(subgraphs.get(key));
-	            }
+		    	tallySubgraphs(finalEdgeArr);
 		    }
 		}
 		for (FenwickRandomGraphGenerator gen: genList) {
@@ -155,15 +184,17 @@ import com.carrotsearch.hppc.LongLongOpenHashMap;
 	public void start() {
 		if (thread == null) {
 			if (threadname == null) {
-				threadname = "job" + start + " to " + end;
+				threadname = "job_" + start + "_to_" + end;
 			}
 			thread = new Thread(this, threadname);
 		}
-		try {
-			File outdirFile = new File(rand_outdir);
-			outdirFile.mkdir();
-		} catch (Exception e) {
-			System.err.println("Error occured while creating directory " + rand_outdir);
+		if (rand_outdir != null) {
+			try {
+				File outdirFile = new File(rand_outdir);
+				outdirFile.mkdir();
+			} catch (Exception e) {
+				System.err.println("Error occured while creating directory " + rand_outdir);
+			}
 		}
 		thread.start();
 	}

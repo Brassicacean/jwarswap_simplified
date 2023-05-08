@@ -3,13 +3,13 @@ import java.util.Random;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import java.util.HashMap;
 
-public class EdgeSwitch {
+public class EdgeSwitcher {
     private int[][] edgeArr;
     private HashMap <Integer, IntOpenHashSet> adjacencies = new HashMap <Integer, IntOpenHashSet>();
     private int m_edges;
     private Random random = new Random();
 
-    public EdgeSwitch(int[][] edgeArr) {
+    public EdgeSwitcher(int[][] edgeArr) {
         this.edgeArr = edgeArr.clone();
         m_edges = this.edgeArr.length;
         // track the existing adjacencies.
@@ -20,14 +20,18 @@ public class EdgeSwitch {
         }
     }
     private void switchEdges() {
+    	// select two random edges that are different
         int u = random.nextInt(m_edges);
         int v = random.nextInt(m_edges - 1);
         if (v == u) v++;
+        // Get their starting points and end points
         int v0 = edgeArr[v][0]; int v1 = edgeArr[v][1];
         int u0 = edgeArr[u][0]; int u1 = edgeArr[u][1];
+        // If the can't be swapped, don't try.
         if (adjacencies.get(v0).contains(u1) | adjacencies.get(u0).contains(v1)) {
             ;;
         }
+        // Otherwise, exchange the end points.
         else {
             edgeArr[u][1] = v1;
             edgeArr[v][1] = u1;
@@ -38,6 +42,7 @@ public class EdgeSwitch {
         }
     }
     public void switchNEdges(int switches) {
+    	switches = switches * m_edges;
         for (int i = 0; i < switches; i++) {
             switchEdges();
         }

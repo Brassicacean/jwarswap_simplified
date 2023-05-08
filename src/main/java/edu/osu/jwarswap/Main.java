@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import java.lang.Math;
 
@@ -29,11 +30,16 @@ public class Main {
 	private static String vertexFile = null;
 	private static boolean enumerate = true;
 	private static boolean entropy = false;
+	private static String A_matrix = null;
+	// Not to be confused with back-swapping, this is different
+	private static int edgeSwaps = 0;
+	private static ArrayBlockingQueue<int[][]> adj_queue;
+	private static SumMatrix sumMatrix= null;
 	
 	private final static String helpMessage = 
-			"java -jar jwarswap.jar [Options] graphfile rand-outdir ngraphs factor1 factor2... factorN\n" +
+			"java -jar jwarswap.jar [Options] graphfile ngraphs factor1 factor2... factorN\n" +
 			"graphfile: A two-column edge-list separated by tabs.\n" +
-			"rand-outdir: A directory to put randomized output graphs into.\n"+
+			"rand-outdir: A directory to put randomized output graphs into.\n"+  //TODO: Make this optional.
 			"ngraphs: Number of random graphs to generate.\n" +
 			"factor1..N: The factors to use for weighted edge selection.\n" +
 			"Options:\n" + 
@@ -42,20 +48,24 @@ public class Main {
 			"\t--help, -h: Print this help message.\n" +
 			"\t--no-motifs, -n: Don't enumarate subgraphs to find motifs.\n" + 
 			"\t--motif-size SIZE, -s SIZE: Enumerate motifs of size SIZE. Don't use a size greater than 5.\n" +
-			"\t--motif-outfile FILE, -o FILE: Write motif discovery results to FILE." +
-			"\t--no-self-loops: Don't allow self-loops during graph randomization." +
-			"\t--entropy: Only compute the sample entropy, don't save any graphs.";
+			"\t--motif-outfile FILE, -o FILE: Write motif discovery results to FILE.\n" +
+			"\t--no-self-loops: Don't allow self-loops during graph randomization.\n" +
+			"\t--entropy: Only compute the sample entropy, don't save any graphs.\n" +
+			"\t--edgeSwaps SWAPS, -w SWAPS: Apply SWAPS edge-swaps times the number of edges to each randomized graph.\n" +
+			"\t--adj A_MATRIX, -a A_MATRIX: Write an adjacency matrix to A_MATRIX. In this current implementation, the output is indifferent to layers.\n" +
+			"\t--graphdir GRAPHDIR: Write random graphs to GRAPHDIR.\n";
 	private static String motifsOutfile = null;
 	public static void main(String[] args) throws IOException {
 		parseArguments(args);
 		
+		// Start the WaRSwap tasks, which will make random graphs.
 		WarswapTask[] tasks = runWarswap(graphfile, vertexFile, randOutdir, ngraphs, coefficients, threads);
+		// Enumerate subgraphs if requested.
 		if (enumerate) getResults(tasks, motifsOutfile, graphfile);
 		System.out.println(getSwaps(tasks) + " swaps were made");
 		System.out.println("All done!");
 		System.exit(0);
 	}
-	
 	
 	private static void parseArguments(String[] args) {
 		LinkedList<Double> coefficientList = new LinkedList<Double>();
@@ -91,14 +101,29 @@ public class Main {
 				break;
 			case "--entropy": 
 				entropy = true;
-				WarswapTask.setSaveGraphs(false);  //TODO: Consider making this part of an independent option.
 				WarswapTask.setEntropy(true);
+				break;
+			case "--edge-swaps": case "-w":
+				i++;
+				edgeSwaps = (int) Integer.valueOf(args[i]);
+				if (edgeSwaps < 0) {
+					System.err.println("Cannot require a negative number of edge-swaps.");
+					System.exit(1);
+				}
+				WarswapTask.setEdgeSwaps(edgeSwaps);
+				break;
+			case "--adj": case "-a":
+				i++;
+				A_matrix = args[i];
+				break;
+			case "--graphdir":
+				i++;
+				randOutdir = args[i];
 				break;
 			default:  // Read positional arguments.
 				switch (position) {
 					case 0: graphfile = args[i]; break;
-					case 1: randOutdir = args[i]; break;
-					case 2: ngraphs = (int) Integer.valueOf(args[i]); break;
+					case 1: ngraphs = (int) Integer.valueOf(args[i]); break;
 					default: coefficientList.add(Double.valueOf(args[i]));
 				}
 				position++;
@@ -106,8 +131,8 @@ public class Main {
 			}
 			i++;
 		}
-		if (position <= 3) {
-			System.err.println("At least three positional arguments are required.");
+		if (position <= 2) {
+			System.err.println("At least two positional arguments are required.");
 			System.err.println(helpMessage);
 			System.exit(1);
 		}
@@ -117,15 +142,26 @@ public class Main {
 			coefficients[idx] = (double) coef;
 			idx++;
 		}
+		//TODO: Move this, since this doesn't work for graphs with multiple layers.
+		if (A_matrix != null) {
+			adj_queue = new ArrayBlockingQueue<int[][]>(threads * 2);
+			WarswapTask.setAdjQueue(adj_queue);
+			try {
+				sumMatrix = new SumMatrix(Parsing.parseEdgeListFile(graphfile), adj_queue);
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				System.exit(1);
+			}
+		}
 	}
 	
 	private static boolean checkWeights(String graphfile, double[] coefficients) {
 		int[] srcDegSeq = null, tgtDegSeq = null;
 		try {
 			LinkedList<int[]> degSeqs = Parsing.degreeSequences(graphfile);
-			srcDegSeq = degSeqs.pop();
+			srcDegSeq = degSeqs.pop();	
 			tgtDegSeq = degSeqs.pop();
-//			degSeqs.pop();  // Discard the names. 
 		} catch (FileNotFoundException e) {
 			System.err.println("File not found: " + graphfile);
 			System.exit(1);
@@ -153,11 +189,11 @@ public class Main {
 			System.err.println("File not found: " + graphfile);
 			System.exit(1);
 		}
-		//System.out.println("Degree sequences:");
-		//for (int deg: srcDegSeq) System.out.print(deg + " ");
-		//System.out.println();
-		//for (int deg: tgtDegSeq) System.out.print(deg + " ");
-		//System.out.println();
+		System.out.println("Degree sequences:");
+		for (int deg: srcDegSeq) System.out.print(deg + " ");
+		System.out.println();
+		for (int deg: tgtDegSeq) System.out.print(deg + " ");
+		System.out.println();
 	}
 	
 	private static WarswapTask[] runWarswap(String graphfile, String vertexFile, String rand_outdir, int ngraphs, double[] coefficients, int threads) 
@@ -166,7 +202,7 @@ public class Main {
 		 * Create a number of threads and send them a fixed number of graphs to make so that ngraphs graphs are made in total. 
 		 * If vertexFile is given, use it during motif discovery.
 		 */
-		printGraphInfo(graphfile);
+		//printGraphInfo(graphfile);
 		if (checkWeights(graphfile, coefficients)) {
 			System.out.println("Invalid factors: There is a source-target pair with a negative sampling weight.");
 			System.exit(1);
@@ -185,6 +221,9 @@ public class Main {
 		}
 		// For storing the counts of each subgraph type for statistical analysis.
 		ExecutorService executor = Executors.newFixedThreadPool(threads);
+		if (A_matrix != null) {
+			sumMatrix.start();
+		}
 		List<Future<?>> futures = new ArrayList<>();
 		// Create the first interval.
 		int increment = ngraphs / threads;
@@ -213,6 +252,16 @@ public class Main {
 				e.printStackTrace();
 				System.exit(1);
 			}
+		if (adj_queue != null) {
+			// Send the poisonpill to get the queue to stop. 
+			try {
+				adj_queue.put(new int[][] {{-1, -1}});
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				System.exit(1);
+			}
+			sumMatrix.writeAvgMatrix(A_matrix, ngraphs);
+		}
 		return tasks;
 	}
 	
