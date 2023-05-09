@@ -29,12 +29,12 @@ public class Main {
 	private static int threads = 1;
 	private static String vertexFile = null;
 	private static boolean enumerate = true;
-	private static boolean entropy = false;
 	private static String A_matrix = null;
 	// Not to be confused with back-swapping, this is different
 	private static int edgeSwaps = 0;
 	private static ArrayBlockingQueue<int[][]> adj_queue;
-	private static SumMatrix sumMatrix= null;
+	private static SumMatrix sumMatrix = null;
+	private static boolean nowarswap = false;
 	
 	private final static String helpMessage = 
 			"java -jar jwarswap.jar [Options] graphfile ngraphs factor1 factor2... factorN\n" +
@@ -51,7 +51,7 @@ public class Main {
 			"\t--motif-outfile FILE, -o FILE: Write motif discovery results to FILE.\n" +
 			"\t--no-self-loops: Don't allow self-loops during graph randomization.\n" +
 			"\t--entropy: Only compute the sample entropy, don't save any graphs.\n" +
-			"\t--edgeSwaps SWAPS, -w SWAPS: Apply SWAPS edge-swaps times the number of edges to each randomized graph.\n" +
+			"\t--edge-swaps SWAPS, -w SWAPS: Apply SWAPS edge-swaps times the number of edges to each randomized graph.\n" +
 			"\t--adj A_MATRIX, -a A_MATRIX: Write an adjacency matrix to A_MATRIX. In this current implementation, the output is indifferent to layers.\n" +
 			"\t--graphdir GRAPHDIR: Write random graphs to GRAPHDIR.\n";
 	private static String motifsOutfile = null;
@@ -59,10 +59,16 @@ public class Main {
 		parseArguments(args);
 		
 		// Start the WaRSwap tasks, which will make random graphs.
-		WarswapTask[] tasks = runWarswap(graphfile, vertexFile, randOutdir, ngraphs, coefficients, threads);
+		if (nowarswap) {  // Special setting for if you just want to use the same input graph each time. 
+			EdgeSwitchTask[] tasks = runEdgeSwitching(graphfile, vertexFile, randOutdir, ngraphs, threads);
+			if (enumerate) getEdgeSwitchResults(tasks, motifsOutfile, graphfile);
+		} else {
+			WarswapTask[] tasks = runWarswap(graphfile, vertexFile, randOutdir, ngraphs, coefficients, threads);
+			if (enumerate) getWarswapResults(tasks, motifsOutfile, graphfile);
+			System.out.println(getSwaps(tasks) + " swaps were made");
+		}
 		// Enumerate subgraphs if requested.
-		if (enumerate) getResults(tasks, motifsOutfile, graphfile);
-		System.out.println(getSwaps(tasks) + " swaps were made");
+		
 		System.out.println("All done!");
 		System.exit(0);
 	}
@@ -99,10 +105,10 @@ public class Main {
 				i++;
 				motifsOutfile = args[i];
 				break;
-			case "--entropy": 
-				entropy = true;
-				WarswapTask.setEntropy(true);
-				break;
+//			case "--entropy": 
+//				entropy = true;
+//				WarswapTask.setEntropy(true);
+//				break;
 			case "--edge-swaps": case "-w":
 				i++;
 				edgeSwaps = (int) Integer.valueOf(args[i]);
@@ -111,6 +117,7 @@ public class Main {
 					System.exit(1);
 				}
 				WarswapTask.setEdgeSwaps(edgeSwaps);
+				EdgeSwitchTask.setEdgeSwaps(edgeSwaps);
 				break;
 			case "--adj": case "-a":
 				i++;
@@ -119,6 +126,9 @@ public class Main {
 			case "--graphdir":
 				i++;
 				randOutdir = args[i];
+				break;
+			case "--no-warswap":
+				nowarswap = true;
 				break;
 			default:  // Read positional arguments.
 				switch (position) {
@@ -146,6 +156,7 @@ public class Main {
 		if (A_matrix != null) {
 			adj_queue = new ArrayBlockingQueue<int[][]>(threads * 2);
 			WarswapTask.setAdjQueue(adj_queue);
+			EdgeSwitchTask.setAdjQueue(adj_queue);
 			try {
 				sumMatrix = new SumMatrix(Parsing.parseEdgeListFile(graphfile), adj_queue);
 			} catch (FileNotFoundException e) {
@@ -266,6 +277,71 @@ public class Main {
 	}
 	
 	
+	private static EdgeSwitchTask[] runEdgeSwitching(String graphfile, String vertexFile, String rand_outdir, int ngraphs,int threads)
+			throws FileNotFoundException {		
+		if (checkWeights(graphfile, coefficients)) {
+			System.out.println("Invalid factors: There is a source-target pair with a negative sampling weight.");
+			System.exit(1);
+		}
+		// Set up the vertex colors.
+		HashMap<Integer, Byte> vColorHash = null;
+		int[][] edgeList = Parsing.parseEdgeListFile(graphfile);
+		ArrayList<int[][]> edgeLists;
+		if (vertexFile != null) {
+			try {
+				vColorHash = Parsing.readColors(vertexFile);
+				HashGraph.assignColors(vColorHash);
+				MatGraph.assignColors(vColorHash);
+			} catch(IOException e) {
+				System.err.println("Error reading file: " + vertexFile);
+				System.exit(1);
+			}
+			edgeLists = Setup.getEdgeLists(edgeList, vColorHash);
+		} else {
+			edgeLists = new ArrayList<int[][]>();
+			edgeLists.add(edgeList);
+		}
+		// For storing the counts of each subgraph type for statistical analysis.
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
+		if (A_matrix != null) {
+			sumMatrix.start();
+		}
+		List<Future<?>> futures = new ArrayList<>();
+		// Create the first interval.
+		int increment = ngraphs / threads;
+		int start = 0, end = increment;
+		EdgeSwitchTask.set_edgelists(edgeLists);
+		EdgeSwitchTask[] tasks = new EdgeSwitchTask[threads];
+		for (int i = 0; i < threads; i++) {
+			tasks[i] = new EdgeSwitchTask(rand_outdir, start, end);
+			// Must set up the graph generators. If there is a color file, then there is a
+			// different procedure, because there are different layers that must be created
+			// separately.
+			Future<?> f = executor.submit(tasks[i]);
+			futures.add(f);
+			start = end + 1;
+			end = Math.min(end + increment, ngraphs - 1);
+		}
+		for (Future<?> f: futures)
+			try {
+				f.get();
+			} catch (InterruptedException | ExecutionException e) {
+				e.printStackTrace();
+				System.exit(1);
+			}
+		if (adj_queue != null) {
+			// Send the poisonpill to get the queue to stop. 
+			try {
+				adj_queue.put(new int[][] {{-1, -1}});
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				System.exit(1);
+			}
+			sumMatrix.writeAvgMatrix(A_matrix, ngraphs);
+		}
+		return tasks;	}
+	
+	
 	private static int getSwaps(WarswapTask[] tasks) {
 		int swaps = 0;
 		for (WarswapTask task: tasks) {
@@ -275,10 +351,57 @@ public class Main {
 	}
 	
 	
-	private static void getResults(WarswapTask[] tasks, String motifOutfile, String graphfile) {
+	private static void getWarswapResults(WarswapTask[] tasks, String motifOutfile, String graphfile) {
 		// Get the counts
 		HashMap <Long, LinkedList <Long>> allSubgraphCounts = new HashMap <Long, LinkedList <Long>>();
 		for (WarswapTask task: tasks) {
+			HashMap <Long, LinkedList <Long>> subgraphsCount = task.getSubgraphCounts();
+			for (long key: subgraphsCount.keySet()) {
+				if (! allSubgraphCounts.containsKey(key)) allSubgraphCounts.put(key, new LinkedList <Long>());
+				allSubgraphCounts.get(key).addAll(subgraphsCount.get(key));	
+			}
+		}
+		int[][] edgeArr = null;
+		try {
+			edgeArr = Parsing.parseEdgeListFile(graphfile);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+		LongLongOpenHashMap origSubgraphs = WarswapTask.getSubgraphs(edgeArr);
+		String outBuffer = "Adj. matrix\tZ-Score\tP-Value\n";
+		for (long key: origSubgraphs.keys) {
+		// Fill lists with zeros until all graphs have a count.
+		// (Normally, if a subgraph doesn't show up, it doesn't get a count.)
+			if (! allSubgraphCounts.containsKey(key)) {
+				allSubgraphCounts.put(key, new LinkedList<Long>());
+			}
+			while (allSubgraphCounts.get(key).size() < tasks.length) {
+				allSubgraphCounts.get(key).add((long) 0);
+			}
+			if (origSubgraphs.get(key) > 0) {
+				outBuffer = outBuffer.concat(
+						subgraphInfo(key, WarswapTask.getMotifSize(),allSubgraphCounts.get(key), origSubgraphs.get(key)));
+			}
+		}
+		if (motifOutfile == null) {
+			System.out.print(outBuffer);
+		} else {
+			try {
+				FileWriter outFileWriter = new FileWriter(motifOutfile);
+				outFileWriter.write(outBuffer);
+				outFileWriter.close();
+			} catch(IOException e) {
+				System.err.println("An error occured while attempting to create " + motifOutfile);
+				System.exit(1);
+			}
+		}
+	}
+	
+	private static void getEdgeSwitchResults(EdgeSwitchTask[] tasks, String motifOutfile, String graphfile) {
+		// Get the counts
+		HashMap <Long, LinkedList <Long>> allSubgraphCounts = new HashMap <Long, LinkedList <Long>>();
+		for (EdgeSwitchTask task: tasks) {
 			HashMap <Long, LinkedList <Long>> subgraphsCount = task.getSubgraphCounts();
 			for (long key: subgraphsCount.keySet()) {
 				if (! allSubgraphCounts.containsKey(key)) allSubgraphCounts.put(key, new LinkedList <Long>());

@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.ArrayList;
 
 public class Setup {
 	
@@ -149,6 +150,30 @@ public class Setup {
 			}
 		}
 		return genList;
+	}
+	
+	
+	public static ArrayList<int[][]> getEdgeLists(
+			int[][] edgeList, HashMap<Integer, Byte> vColorHash) {
+		/**
+		 * Create and return a list of FenwickRandomGraphGenerators corresponding to each graph layer.
+		 */
+		ArrayList<int[][]> edgeLists = new ArrayList<int[][]>();
+		HashMap<Byte, HashMap<Byte, LinkedList<int[]>>> layerSubGraphs = getLayerSubGraphs(edgeList, vColorHash);
+		for (Byte color1: layerSubGraphs.keySet()) {
+			for (Byte color2: layerSubGraphs.get(color1).keySet()) {
+				LinkedList<int[]> subGraphEdgeList = layerSubGraphs.get(color1).get(color2);
+				int[][]subGraphEdgeArray = new int[subGraphEdgeList.size()][2];
+				int i = 0;
+				for(int[] edge: subGraphEdgeList) {
+					subGraphEdgeArray[i][0] = edge[0];
+					subGraphEdgeArray[i][1] = edge[1];
+					i++;
+				}
+				edgeLists.add(subGraphEdgeArray);
+			}
+		}
+		return edgeLists;
 	}
 }
 

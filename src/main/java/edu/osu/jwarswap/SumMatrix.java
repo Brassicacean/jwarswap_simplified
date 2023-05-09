@@ -23,12 +23,11 @@ public class SumMatrix implements Runnable{
 	
 	public SumMatrix(int rows, int cols, ArrayBlockingQueue <int[][]> queue) {
 		/** 
-		 * Capacity should be proportional to the number of threads, perhaps two per thread?
+		 * This class has a queue which will receive an edge list whenever it can, and block when a 
+		 * request cannot be received until there is room. Use the poisonpill message,
+		 * int[][] poisonpill = {{-1, -1}}, to stop it.
 		 */
 		this.sums = new int[rows][cols];
-		// TODO: How to make the queue and start adding to the matrix. 
-		// options: A queue of 2D edge-lists, a queue backed by a 2D edge-list.
-		// Latter is probably faster, but may be harder to use.
 		this.queue = queue;
 	}
 	
@@ -49,10 +48,7 @@ public class SumMatrix implements Runnable{
 	
 	public void run() {
 		/**
-		 * This method must receive an edge list whenever it can, and block when a 
-		 * request cannot be received until there is room. Should check periodically 
-		 * for a signal that all edge lists have been sent i.e. all WarswapTasks are finished.
-		 * use the poisonpill message, int[][] poisonpill = {{-1, -1}}, to stop it.
+		 *
 		 */
 		try {
 			while (true) {
@@ -91,6 +87,5 @@ public class SumMatrix implements Runnable{
 			System.err.println("Error occurred while creating file " + outfile);
 			e.printStackTrace();
 		}
-
 	}
 }
