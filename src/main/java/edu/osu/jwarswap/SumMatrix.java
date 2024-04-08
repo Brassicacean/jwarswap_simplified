@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.LinkedList;
+import java.lang.Math;
 
 public class SumMatrix implements Runnable{
 	private int[][] sums;
@@ -87,5 +88,33 @@ public class SumMatrix implements Runnable{
 			System.err.println("Error occurred while creating file " + outfile);
 			e.printStackTrace();
 		}
+	}
+
+	
+	private double entropy(double x) {
+		double S = 0.0;
+		if (x > 1 | x < 0) {
+			System.err.println("Invalid proportion: " + x);
+			System.exit(1);
+		}
+		else if (x == 0 | x == 1) {
+			S =  0.0;
+		}
+		else {
+			S = x * Math.log(x) + (1.0 - x) * Math.log(1.0 - x);
+		}
+		return -S;
+	}
+	
+	
+	public double calculate_entropy(int ngraphs) {
+		double S = 0.0;
+		for (int row = 0; row < this.sums.length; row++) {
+    		int ncols = this.sums[row].length;
+    		for (int col = 0; col < ncols; col++) {
+    			S = S + entropy((double) sums[row][col] / ngraphs);
+    		}
+		}
+		return S / Math.log(2);
 	}
 }

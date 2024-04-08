@@ -15,6 +15,11 @@ public class FenwickRandomGraphGenerator {
 	private FenwickEdgeGenerator randomEdgeGenerator;
 	private int[] vertexNames = null;
 	private int swapCounter = 0;
+	private static boolean noBackSwaps = false;
+	
+	public static void set_noBackswaps(boolean setting) {
+		noBackSwaps = setting;
+	}
 
 	public int countEdges() {
 		return this.mEdges;
@@ -148,9 +153,12 @@ public class FenwickRandomGraphGenerator {
 				//System.out.println();
 				// If swaps have to be made, detect it and make swaps.
 				if (targets[srcDeg] > 0) {
-					this.swapCounter += targets[srcDeg];
-					swapEdges(edgeArr, targets, srcVtx, randomEdgeGenerator);
-					//success=false;
+					if (noBackSwaps) {
+						success=false;
+					} else {
+						this.swapCounter += targets[srcDeg];
+						swapEdges(edgeArr, targets, srcVtx, randomEdgeGenerator);
+					}
 				}
 				// Add the new edges to the edge list.
 				for (int j = 0; j < srcDeg; j++) {

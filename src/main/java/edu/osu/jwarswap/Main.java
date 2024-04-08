@@ -35,6 +35,8 @@ public class Main {
 	private static ArrayBlockingQueue<int[][]> adj_queue;
 	private static SumMatrix sumMatrix = null;
 	private static boolean nowarswap = false;
+	private static boolean noBackswaps = false;
+	private static boolean entropy = false;
 	
 	private final static String helpMessage = 
 			"java -jar jwarswap.jar [Options] graphfile ngraphs factor1 factor2... factorN\n" +
@@ -50,10 +52,12 @@ public class Main {
 			"\t--motif-size SIZE, -s SIZE: Enumerate motifs of size SIZE. Don't use a size greater than 5.\n" +
 			"\t--motif-outfile FILE, -o FILE: Write motif discovery results to FILE.\n" +
 			"\t--no-self-loops: Don't allow self-loops during graph randomization.\n" +
-			"\t--entropy: Only compute the sample entropy, don't save any graphs.\n" +
+			"\t--entropy: Compute the sample entropy and output it on the command line.\n" +
 			"\t--edge-swaps SWAPS, -w SWAPS: Apply SWAPS edge-swaps times the number of edges to each randomized graph.\n" +
 			"\t--adj A_MATRIX, -a A_MATRIX: Write an adjacency matrix to A_MATRIX. In this current implementation, the output is indifferent to layers.\n" +
-			"\t--graphdir GRAPHDIR: Write random graphs to GRAPHDIR.\n";
+			"\t--graphdir GRAPHDIR: Write random graphs to GRAPHDIR.\n" +
+			"\t--no-warswap: Don't use WaRSwap, just use edge-switching from the inpud degree sequence.\n" + 
+			"\t--no-backswaps: Instead of back-swapping, start from scratch if stuck.\n";
 	private static String motifsOutfile = null;
 	public static void main(String[] args) throws IOException {
 		parseArguments(args);
@@ -105,10 +109,10 @@ public class Main {
 				i++;
 				motifsOutfile = args[i];
 				break;
-//			case "--entropy": 
-//				entropy = true;
-//				WarswapTask.setEntropy(true);
-//				break;
+			case "--entropy": 
+				entropy = true;
+				WarswapTask.setEntropy(true);
+				break;
 			case "--edge-swaps": case "-w":
 				i++;
 				edgeSwaps = (int) Integer.valueOf(args[i]);
@@ -129,6 +133,10 @@ public class Main {
 				break;
 			case "--no-warswap":
 				nowarswap = true;
+				break;
+			case "--no-backswaps": 
+				noBackswaps = true;
+				FenwickRandomGraphGenerator.set_noBackswaps(true);
 				break;
 			default:  // Read positional arguments.
 				switch (position) {
@@ -153,7 +161,7 @@ public class Main {
 			idx++;
 		}
 		//TODO: Move this, since this doesn't work for graphs with multiple layers.
-		if (A_matrix != null) {
+		if (A_matrix != null | entropy) {
 			adj_queue = new ArrayBlockingQueue<int[][]>(threads * 2);
 			WarswapTask.setAdjQueue(adj_queue);
 			EdgeSwitchTask.setAdjQueue(adj_queue);
@@ -232,13 +240,13 @@ public class Main {
 		}
 		// For storing the counts of each subgraph type for statistical analysis.
 		ExecutorService executor = Executors.newFixedThreadPool(threads);
-		if (A_matrix != null) {
+		if (adj_queue != null) {
 			sumMatrix.start();
 		}
 		List<Future<?>> futures = new ArrayList<>();
 		// Create the first interval.
 		int increment = ngraphs / threads;
-		int start = 0, end = increment;
+		int start = 0, end = Math.min(increment, ngraphs - 1);
 		WarswapTask[] tasks = new WarswapTask[threads];
 		int[][] edgeList = Parsing.parseEdgeListFile(graphfile);
 		for (int i = 0; i < threads; i++) {
@@ -271,7 +279,12 @@ public class Main {
 				e.printStackTrace();
 				System.exit(1);
 			}
-			sumMatrix.writeAvgMatrix(A_matrix, ngraphs);
+			if (A_matrix != null) {
+				sumMatrix.writeAvgMatrix(A_matrix, ngraphs);
+			}
+			if (entropy) {
+				System.out.println("Entropy: " + sumMatrix.calculate_entropy(ngraphs));
+			}
 		}
 		return tasks;
 	}
@@ -309,7 +322,7 @@ public class Main {
 		List<Future<?>> futures = new ArrayList<>();
 		// Create the first interval.
 		int increment = ngraphs / threads;
-		int start = 0, end = increment;
+		int start = 0, end = increment - 1;
 		EdgeSwitchTask.set_edgelists(edgeLists);
 		EdgeSwitchTask[] tasks = new EdgeSwitchTask[threads];
 		for (int i = 0; i < threads; i++) {
